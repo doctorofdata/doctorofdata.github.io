@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Semantic Search | Zan Sadiq</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Semantic Search" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Semantic Search In this exercise, we will use various techniques to assess search relevance by testing “Mean Absolute Percent Error” (MAPE) of our algorithms and their ability to retrieve relevant products based on various search queries. The techniques we will use include: -TF-IDF -BM25 -Sentence Embeddings -Semantic ReRanking -Evaluation # Install the required packages into the environment !pip install rank-bm25 sentence-transformers torch transformers Collecting rank-bm25 Downloading rank_bm25-0.2.2-py3-none-any.whl.metadata (3.2 kB) Collecting sentence-transformers Downloading sentence_transformers-2.7.0-py3-none-any.whl.metadata (11 kB) Requirement already satisfied: torch in /opt/conda/lib/python3.10/site-packages (2.1.2+cpu) Requirement already satisfied: transformers in /opt/conda/lib/python3.10/site-packages (4.39.3) Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from rank-bm25) (1.26.4) Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (4.66.1) Requirement already satisfied: scikit-learn in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.2.2) Requirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.11.4) Requirement already satisfied: huggingface-hub&gt;=0.15.1 in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (0.22.2) Requirement already satisfied: Pillow in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (9.5.0) Requirement already satisfied: filelock in /opt/conda/lib/python3.10/site-packages (from torch) (3.13.1) Requirement already satisfied: typing-extensions in /opt/conda/lib/python3.10/site-packages (from torch) (4.9.0) Requirement already satisfied: sympy in /opt/conda/lib/python3.10/site-packages (from torch) (1.12) Requirement already satisfied: networkx in /opt/conda/lib/python3.10/site-packages (from torch) (3.2.1) Requirement already satisfied: jinja2 in /opt/conda/lib/python3.10/site-packages (from torch) (3.1.2) Requirement already satisfied: fsspec in /opt/conda/lib/python3.10/site-packages (from torch) (2024.2.0) Requirement already satisfied: packaging&gt;=20.0 in /opt/conda/lib/python3.10/site-packages (from transformers) (21.3) Requirement already satisfied: pyyaml&gt;=5.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (6.0.1) Requirement already satisfied: regex!=2019.12.17 in /opt/conda/lib/python3.10/site-packages (from transformers) (2023.12.25) Requirement already satisfied: requests in /opt/conda/lib/python3.10/site-packages (from transformers) (2.31.0) Requirement already satisfied: tokenizers&lt;0.19,&gt;=0.14 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.15.2) Requirement already satisfied: safetensors&gt;=0.4.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.4.3) Requirement already satisfied: pyparsing!=3.0.5,&gt;=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging&gt;=20.0-&gt;transformers) (3.1.1) Requirement already satisfied: MarkupSafe&gt;=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2-&gt;torch) (2.1.3) Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.3.2) Requirement already satisfied: idna&lt;4,&gt;=2.5 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.6) Requirement already satisfied: urllib3&lt;3,&gt;=1.21.1 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (1.26.18) Requirement already satisfied: certifi&gt;=2017.4.17 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (2024.2.2) Requirement already satisfied: joblib&gt;=1.1.1 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (1.4.0) Requirement already satisfied: threadpoolctl&gt;=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (3.2.0) Requirement already satisfied: mpmath&gt;=0.19 in /opt/conda/lib/python3.10/site-packages (from sympy-&gt;torch) (1.3.0) Downloading rank_bm25-0.2.2-py3-none-any.whl (8.6 kB) Downloading sentence_transformers-2.7.0-py3-none-any.whl (171 kB) [2K [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m171.5/171.5 kB[0m [31m1.4 MB/s[0m eta [36m0:00:00[0m [?25hInstalling collected packages: rank-bm25, sentence-transformers Successfully installed rank-bm25-0.2.2 sentence-transformers-2.7.0 # Import libraries import numpy as np import pandas as pd import os from sklearn.feature_extraction.text import TfidfVectorizer from sklearn.metrics.pairwise import cosine_similarity import string import re from rank_bm25 import BM25Okapi from sentence_transformers import SentenceTransformer, CrossEncoder, util import torch.nn.functional as F from torch import Tensor from transformers import AutoTokenizer, AutoModel # Check data files for dirname, _, filenames in os.walk(&#39;/kaggle/input&#39;): for filename in filenames: print(os.path.join(dirname, filename)) /kaggle/input/wayfair-wands-dataset/query.csv /kaggle/input/wayfair-wands-dataset/product.csv /kaggle/input/wayfair-wands-dataset/label.csv # Compile functions for later implementation def average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -&gt; Tensor: last_hidden = last_hidden_states.masked_fill(~attention_mask[..., None].bool(), 0.0) return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None] # Function to lookup query matches def get_exact_matches_for_(query): labels = label_df[label_df[&#39;query_id&#39;] == query] return labels[labels[&#39;label&#39;] == &#39;Exact&#39;][&#39;product_id&#39;].values # Function to get tf-idf results def get_tfidf_products(x): return cosine_similarity(vec.transform([x]), matrix).flatten().argsort()[-10:][::-1] #define functions for evaluating retrieval performance def map_at_k(true_ids, predicted_ids, k = 10): &quot;&quot;&quot; Calculate the Mean Average Precision at K (MAP@K). Parameters: true_ids (list): List of relevant product IDs. predicted_ids (list): List of predicted product IDs. k (int): Number of top elements to consider. NOTE: IF you wish to change top k, please provide a justification for choosing the new value Returns: float: MAP@K score. &quot;&quot;&quot; #if either list is empty, return 0 if not len(true_ids) or not len(predicted_ids): return 0.0 score = 0.0 num_hits = 0.0 # Calculate score for i, p_id in enumerate(predicted_ids[:k]): if p_id in true_ids and p_id not in predicted_ids[:i]: num_hits += 1.0 score += num_hits / (i + 1.0) # Return MAPE return score / min(len(true_ids), k) # Function to execute bm search def execute_bm_search(q): return np.argsort(bm25.get_scores(q.split(&#39; &#39;)))[-10:] # Function to perform reranking def execute_reranking(data, query): # Translate query query_embeddings = biencoder.encode(query, convert_to_tensor = True) #.cuda() # Get cosine similarity hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Perform reranking cross_inp = [[query, data[hit[&#39;corpus_id&#39;]]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx][&#39;score&#39;] = cross_scores[idx] sortie = sorted(hits, key = lambda x: x[&#39;score&#39;], reverse = True)[0:10] return [item[&#39;corpus_id&#39;] for item in sortie] # Load the components query_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/query.csv&quot;, sep = &#39;\t&#39;) product_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/product.csv&quot;, sep = &#39;\t&#39;) label_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/label.csv&quot;, sep = &#39;\t&#39;) # Inspect initial dataframes product_df.head() product_id product_name product_class category hierarchy product_description product_features rating_count average_rating review_count 0 0 solid wood platform bed Beds Furniture / Bedroom Furniture / Beds &amp; Headboa... good , deep sleep can be quite difficult to ha... overallwidth-sidetoside:64.7|dsprimaryproducts... 15.0 4.5 15.0 1 1 all-clad 7 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... create delicious slow-cooked meals , from tend... capacityquarts:7|producttype : slow cooker|pro... 100.0 2.0 98.0 2 2 all-clad electrics 6.5 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... prepare home-cooked meals on any schedule with... features : keep warm setting|capacityquarts:6.... 208.0 3.0 181.0 3 3 all-clad all professional tools pizza cutter Slicers, Peelers And Graters Browse By Brand / All-Clad this original stainless tool was designed to c... overallwidth-sidetoside:3.5|warrantylength : l... 69.0 4.5 42.0 4 4 baldwin prestige alcott passage knob with roun... Door Knobs Home Improvement / Doors &amp; Door Hardware / Doo... the hardware has a rich heritage of delivering... compatibledoorthickness:1.375 &#39;&#39; |countryofori... 70.0 5.0 42.0 product_df.shape (42994, 9) query_df.head() query_id query query_class 0 0 salon chair Massage Chairs 1 1 smart coffee table Coffee &amp; Cocktail Tables 2 2 dinosaur Kids Wall Décor 3 3 turquoise pillows Accent Pillows 4 4 chair and a half recliner Recliners query_df.shape[0] 480 label_df.head() id query_id product_id label 0 0 0 25434 Exact 1 1 0 12088 Irrelevant 2 2 0 42931 Exact 3 3 0 2636 Exact 4 4 0 42923 Exact product_df.isnull().sum() product_id 0 product_name 0 product_class 2852 category hierarchy 1556 product_description 6008 product_features 0 rating_count 9452 average_rating 9452 review_count 9452 dtype: int64 # Combine fields and process text product_df[&#39;text&#39;] = product_df[&#39;product_name&#39;] + &#39; &#39; + product_df[&#39;product_description&#39;].fillna(&#39;&#39;) product_df[&#39;text&#39;] = product_df[&#39;text&#39;].apply(lambda x: x.translate(str.maketrans(&#39;&#39;, &#39;&#39;, string.punctuation))) product_df[&#39;text&#39;] = product_df[&#39;text&#39;].apply(lambda x: re.sub(&#39;\d+&#39;, &#39;&#39;, x).lower().strip().replace(&#39; &#39;, &#39; &#39;)) Back to top.. TF-IDF # Calculate TF-IDF vec = TfidfVectorizer() tfidf = vec.fit(product_df[&#39;text&#39;]) matrix = tfidf.transform(product_df[&#39;text&#39;]) # Use the product ledger to calculate exact matches for each suggestion query_df[&#39;matches&#39;] = query_df[&#39;query_id&#39;].apply(get_exact_matches_for_) # Use TF-IDF to calculate cosine similarity and return similar entries query_df[&#39;suggestions&#39;] = query_df[&#39;query&#39;].apply(get_tfidf_products) # Calclate Mean Average Precision MAPE query_df[&#39;score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;suggestions&#39;], k = 10), axis = 1) Back to top.. BM25 # Init model bm25 = BM25Okapi(product_df[&#39;text&#39;].apply(lambda x: x.split(&#39; &#39;))) # Add BM result to data query_df[&#39;bm_suggestions&#39;] = query_df[&#39;query&#39;].apply(execute_bm_search) # Score BM25 query_df[&#39;bm_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;bm_suggestions&#39;], k = 10), axis = 1) Back to top.. Embeddings # Prepare an embedding model queries = [] passages = [] for idx, row in query_df.iterrows(): input = f&quot;query: {row[&#39;query&#39;]}&quot; queries.append(input) for idx, row in product_df.iterrows(): input = f&quot;passage: {row[&#39;text&#39;]}&quot; passages.append(input) input_texts = queries + passages # Init model embedder = SentenceTransformer(&quot;all-MiniLM-L6-v2&quot;) modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/10.7k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/350 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] # Apply embeddings to data %time corpus_embeddings = embedder.encode(passages, convert_to_tensor = True) Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] CPU times: user 31min 22s, sys: 3min 1s, total: 34min 24s Wall time: 17min 8s %time query_embeddings = embedder.encode(queries, convert_to_tensor = True) Batches: 0%| | 0/15 [00:00&lt;?, ?it/s] CPU times: user 3.81 s, sys: 21.2 ms, total: 3.83 s Wall time: 1.92 s # Embed the corpus #corpus_embeddings = corpus_embeddings.to(&quot;cuda&quot;) corpus_embeddings = util.normalize_embeddings(corpus_embeddings) # Embed the queries #query_embeddings = query_embeddings.to(&quot;cuda&quot;) query_embeddings = util.normalize_embeddings(query_embeddings) # Comnpute cosine simi9larities hits = util.semantic_search(query_embeddings, corpus_embeddings, score_function = util.dot_score, top_k = 10) # ECompile semantic similarity back into dataset sims = [[y[&#39;corpus_id&#39;] for y in x] for x in hits] # Add the scores to the original data query_df[&#39;semantic_suggestions&#39;] = sims query_df[&#39;semantic_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;semantic_suggestions&#39;], k = 10), axis = 1) Back to top.. Re-Ranking # Init models for reranking biencoder = SentenceTransformer(&#39;multi-qa-MiniLM-L6-cos-v1&#39;) crossencoderembeddingmodel = CrossEncoder(&#39;cross-encoder/ms-marco-MiniLM-L-6-v2&#39;) # Set sequence length biencoder.max_seq_length = 512 # Num docs topk = 100 modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/11.6k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/383 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/794 [00:00&lt;?, ?B/s] pytorch_model.bin: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] /opt/conda/lib/python3.10/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly. To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage() return self.fget.__get__(instance, owner)() tokenizer_config.json: 0%| | 0.00/316 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] # Perform initial encoding corpus_embeddings = biencoder.encode(product_df[&#39;text&#39;], convert_to_tensor = True, show_progress_bar = True) query_embeddings = biencoder.encode(query_df[&#39;query&#39;].iloc[0], convert_to_tensor = True, show_progress_bar = True) #.cuda() Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] Batches: 0%| | 0/1 [00:00&lt;?, ?it/s] # Extract 100 relevant passages for each query hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Inspection Re-Rank the products cross_inp = [[query_df[&#39;query&#39;].iloc[0], product_df[&#39;text&#39;][hit[&#39;corpus_id&#39;]]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx][&#39;score&#39;] = cross_scores[idx] # Examine outputs print(f&quot;Query Selection- {query_df[&#39;query&#39;].iloc[0]}&quot;) print(&quot;Top-3 Re-Ranked Hits&quot;) hits = sorted(hits, key = lambda x: x[&#39;score&#39;], reverse = True) for hit in hits[0:3]: print(&quot;\t{:.3f}\t{}&quot;.format(hit[&#39;score&#39;], product_df[&#39;product_name&#39;][hit[&#39;corpus_id&#39;]].replace(&quot;\n&quot;, &quot; &quot;))) Batches: 0%| | 0/4 [00:00&lt;?, ?it/s] Query Selection- salon chair Top-3 Re-Ranked Hits 8.191 barberpub salon massage chair 8.156 hair salon chair 7.957 reclining faux leather massage chair %%capture # Perform semantic reranking on the data query_df[&#39;reranked&#39;] = query_df[&#39;query&#39;].apply(lambda x: execute_reranking(product_df[&#39;text&#39;], x)) query_df[&#39;reranking_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;reranked&#39;], k = 10), axis = 1) Back to top.. Evaluation print(&#39;Semantic Scoring Results- MAPE scores&#39;) print(f&quot;TF-IDF on the Queries was {round(query_df.loc[:, &#39;score&#39;].mean(), 3)}&quot;) print(f&quot;BM25 on the Queries was {round(np.mean(query_df[&#39;bm_score&#39;]), 3)}&quot;) print(f&quot;Cosine similarity of the embeddings on the Queries was {round(query_df.loc[:, &#39;semantic_score&#39;].mean(), 3)}&quot;) print(f&quot;Semantic ReRanking on the Queries was {round(query_df.loc[:, &#39;reranking_score&#39;].mean(), 3)}&quot;) Semantic Scoring Results- MAPE scores TF-IDF on the Queries was 0.272 BM25 on the Queries was 0.261 Cosine similarity of the embeddings on the Queries was 0.323 Semantic ReRanking on the Queries was 0.437 Back to top.." />
+<meta property="og:description" content="Semantic Search In this exercise, we will use various techniques to assess search relevance by testing “Mean Absolute Percent Error” (MAPE) of our algorithms and their ability to retrieve relevant products based on various search queries. The techniques we will use include: -TF-IDF -BM25 -Sentence Embeddings -Semantic ReRanking -Evaluation # Install the required packages into the environment !pip install rank-bm25 sentence-transformers torch transformers Collecting rank-bm25 Downloading rank_bm25-0.2.2-py3-none-any.whl.metadata (3.2 kB) Collecting sentence-transformers Downloading sentence_transformers-2.7.0-py3-none-any.whl.metadata (11 kB) Requirement already satisfied: torch in /opt/conda/lib/python3.10/site-packages (2.1.2+cpu) Requirement already satisfied: transformers in /opt/conda/lib/python3.10/site-packages (4.39.3) Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from rank-bm25) (1.26.4) Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (4.66.1) Requirement already satisfied: scikit-learn in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.2.2) Requirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.11.4) Requirement already satisfied: huggingface-hub&gt;=0.15.1 in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (0.22.2) Requirement already satisfied: Pillow in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (9.5.0) Requirement already satisfied: filelock in /opt/conda/lib/python3.10/site-packages (from torch) (3.13.1) Requirement already satisfied: typing-extensions in /opt/conda/lib/python3.10/site-packages (from torch) (4.9.0) Requirement already satisfied: sympy in /opt/conda/lib/python3.10/site-packages (from torch) (1.12) Requirement already satisfied: networkx in /opt/conda/lib/python3.10/site-packages (from torch) (3.2.1) Requirement already satisfied: jinja2 in /opt/conda/lib/python3.10/site-packages (from torch) (3.1.2) Requirement already satisfied: fsspec in /opt/conda/lib/python3.10/site-packages (from torch) (2024.2.0) Requirement already satisfied: packaging&gt;=20.0 in /opt/conda/lib/python3.10/site-packages (from transformers) (21.3) Requirement already satisfied: pyyaml&gt;=5.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (6.0.1) Requirement already satisfied: regex!=2019.12.17 in /opt/conda/lib/python3.10/site-packages (from transformers) (2023.12.25) Requirement already satisfied: requests in /opt/conda/lib/python3.10/site-packages (from transformers) (2.31.0) Requirement already satisfied: tokenizers&lt;0.19,&gt;=0.14 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.15.2) Requirement already satisfied: safetensors&gt;=0.4.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.4.3) Requirement already satisfied: pyparsing!=3.0.5,&gt;=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging&gt;=20.0-&gt;transformers) (3.1.1) Requirement already satisfied: MarkupSafe&gt;=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2-&gt;torch) (2.1.3) Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.3.2) Requirement already satisfied: idna&lt;4,&gt;=2.5 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.6) Requirement already satisfied: urllib3&lt;3,&gt;=1.21.1 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (1.26.18) Requirement already satisfied: certifi&gt;=2017.4.17 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (2024.2.2) Requirement already satisfied: joblib&gt;=1.1.1 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (1.4.0) Requirement already satisfied: threadpoolctl&gt;=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (3.2.0) Requirement already satisfied: mpmath&gt;=0.19 in /opt/conda/lib/python3.10/site-packages (from sympy-&gt;torch) (1.3.0) Downloading rank_bm25-0.2.2-py3-none-any.whl (8.6 kB) Downloading sentence_transformers-2.7.0-py3-none-any.whl (171 kB) [2K [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m171.5/171.5 kB[0m [31m1.4 MB/s[0m eta [36m0:00:00[0m [?25hInstalling collected packages: rank-bm25, sentence-transformers Successfully installed rank-bm25-0.2.2 sentence-transformers-2.7.0 # Import libraries import numpy as np import pandas as pd import os from sklearn.feature_extraction.text import TfidfVectorizer from sklearn.metrics.pairwise import cosine_similarity import string import re from rank_bm25 import BM25Okapi from sentence_transformers import SentenceTransformer, CrossEncoder, util import torch.nn.functional as F from torch import Tensor from transformers import AutoTokenizer, AutoModel # Check data files for dirname, _, filenames in os.walk(&#39;/kaggle/input&#39;): for filename in filenames: print(os.path.join(dirname, filename)) /kaggle/input/wayfair-wands-dataset/query.csv /kaggle/input/wayfair-wands-dataset/product.csv /kaggle/input/wayfair-wands-dataset/label.csv # Compile functions for later implementation def average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -&gt; Tensor: last_hidden = last_hidden_states.masked_fill(~attention_mask[..., None].bool(), 0.0) return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None] # Function to lookup query matches def get_exact_matches_for_(query): labels = label_df[label_df[&#39;query_id&#39;] == query] return labels[labels[&#39;label&#39;] == &#39;Exact&#39;][&#39;product_id&#39;].values # Function to get tf-idf results def get_tfidf_products(x): return cosine_similarity(vec.transform([x]), matrix).flatten().argsort()[-10:][::-1] #define functions for evaluating retrieval performance def map_at_k(true_ids, predicted_ids, k = 10): &quot;&quot;&quot; Calculate the Mean Average Precision at K (MAP@K). Parameters: true_ids (list): List of relevant product IDs. predicted_ids (list): List of predicted product IDs. k (int): Number of top elements to consider. NOTE: IF you wish to change top k, please provide a justification for choosing the new value Returns: float: MAP@K score. &quot;&quot;&quot; #if either list is empty, return 0 if not len(true_ids) or not len(predicted_ids): return 0.0 score = 0.0 num_hits = 0.0 # Calculate score for i, p_id in enumerate(predicted_ids[:k]): if p_id in true_ids and p_id not in predicted_ids[:i]: num_hits += 1.0 score += num_hits / (i + 1.0) # Return MAPE return score / min(len(true_ids), k) # Function to execute bm search def execute_bm_search(q): return np.argsort(bm25.get_scores(q.split(&#39; &#39;)))[-10:] # Function to perform reranking def execute_reranking(data, query): # Translate query query_embeddings = biencoder.encode(query, convert_to_tensor = True) #.cuda() # Get cosine similarity hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Perform reranking cross_inp = [[query, data[hit[&#39;corpus_id&#39;]]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx][&#39;score&#39;] = cross_scores[idx] sortie = sorted(hits, key = lambda x: x[&#39;score&#39;], reverse = True)[0:10] return [item[&#39;corpus_id&#39;] for item in sortie] # Load the components query_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/query.csv&quot;, sep = &#39;\t&#39;) product_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/product.csv&quot;, sep = &#39;\t&#39;) label_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/label.csv&quot;, sep = &#39;\t&#39;) # Inspect initial dataframes product_df.head() product_id product_name product_class category hierarchy product_description product_features rating_count average_rating review_count 0 0 solid wood platform bed Beds Furniture / Bedroom Furniture / Beds &amp; Headboa... good , deep sleep can be quite difficult to ha... overallwidth-sidetoside:64.7|dsprimaryproducts... 15.0 4.5 15.0 1 1 all-clad 7 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... create delicious slow-cooked meals , from tend... capacityquarts:7|producttype : slow cooker|pro... 100.0 2.0 98.0 2 2 all-clad electrics 6.5 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... prepare home-cooked meals on any schedule with... features : keep warm setting|capacityquarts:6.... 208.0 3.0 181.0 3 3 all-clad all professional tools pizza cutter Slicers, Peelers And Graters Browse By Brand / All-Clad this original stainless tool was designed to c... overallwidth-sidetoside:3.5|warrantylength : l... 69.0 4.5 42.0 4 4 baldwin prestige alcott passage knob with roun... Door Knobs Home Improvement / Doors &amp; Door Hardware / Doo... the hardware has a rich heritage of delivering... compatibledoorthickness:1.375 &#39;&#39; |countryofori... 70.0 5.0 42.0 product_df.shape (42994, 9) query_df.head() query_id query query_class 0 0 salon chair Massage Chairs 1 1 smart coffee table Coffee &amp; Cocktail Tables 2 2 dinosaur Kids Wall Décor 3 3 turquoise pillows Accent Pillows 4 4 chair and a half recliner Recliners query_df.shape[0] 480 label_df.head() id query_id product_id label 0 0 0 25434 Exact 1 1 0 12088 Irrelevant 2 2 0 42931 Exact 3 3 0 2636 Exact 4 4 0 42923 Exact product_df.isnull().sum() product_id 0 product_name 0 product_class 2852 category hierarchy 1556 product_description 6008 product_features 0 rating_count 9452 average_rating 9452 review_count 9452 dtype: int64 # Combine fields and process text product_df[&#39;text&#39;] = product_df[&#39;product_name&#39;] + &#39; &#39; + product_df[&#39;product_description&#39;].fillna(&#39;&#39;) product_df[&#39;text&#39;] = product_df[&#39;text&#39;].apply(lambda x: x.translate(str.maketrans(&#39;&#39;, &#39;&#39;, string.punctuation))) product_df[&#39;text&#39;] = product_df[&#39;text&#39;].apply(lambda x: re.sub(&#39;\d+&#39;, &#39;&#39;, x).lower().strip().replace(&#39; &#39;, &#39; &#39;)) Back to top.. TF-IDF # Calculate TF-IDF vec = TfidfVectorizer() tfidf = vec.fit(product_df[&#39;text&#39;]) matrix = tfidf.transform(product_df[&#39;text&#39;]) # Use the product ledger to calculate exact matches for each suggestion query_df[&#39;matches&#39;] = query_df[&#39;query_id&#39;].apply(get_exact_matches_for_) # Use TF-IDF to calculate cosine similarity and return similar entries query_df[&#39;suggestions&#39;] = query_df[&#39;query&#39;].apply(get_tfidf_products) # Calclate Mean Average Precision MAPE query_df[&#39;score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;suggestions&#39;], k = 10), axis = 1) Back to top.. BM25 # Init model bm25 = BM25Okapi(product_df[&#39;text&#39;].apply(lambda x: x.split(&#39; &#39;))) # Add BM result to data query_df[&#39;bm_suggestions&#39;] = query_df[&#39;query&#39;].apply(execute_bm_search) # Score BM25 query_df[&#39;bm_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;bm_suggestions&#39;], k = 10), axis = 1) Back to top.. Embeddings # Prepare an embedding model queries = [] passages = [] for idx, row in query_df.iterrows(): input = f&quot;query: {row[&#39;query&#39;]}&quot; queries.append(input) for idx, row in product_df.iterrows(): input = f&quot;passage: {row[&#39;text&#39;]}&quot; passages.append(input) input_texts = queries + passages # Init model embedder = SentenceTransformer(&quot;all-MiniLM-L6-v2&quot;) modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/10.7k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/350 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] # Apply embeddings to data %time corpus_embeddings = embedder.encode(passages, convert_to_tensor = True) Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] CPU times: user 31min 22s, sys: 3min 1s, total: 34min 24s Wall time: 17min 8s %time query_embeddings = embedder.encode(queries, convert_to_tensor = True) Batches: 0%| | 0/15 [00:00&lt;?, ?it/s] CPU times: user 3.81 s, sys: 21.2 ms, total: 3.83 s Wall time: 1.92 s # Embed the corpus #corpus_embeddings = corpus_embeddings.to(&quot;cuda&quot;) corpus_embeddings = util.normalize_embeddings(corpus_embeddings) # Embed the queries #query_embeddings = query_embeddings.to(&quot;cuda&quot;) query_embeddings = util.normalize_embeddings(query_embeddings) # Comnpute cosine simi9larities hits = util.semantic_search(query_embeddings, corpus_embeddings, score_function = util.dot_score, top_k = 10) # ECompile semantic similarity back into dataset sims = [[y[&#39;corpus_id&#39;] for y in x] for x in hits] # Add the scores to the original data query_df[&#39;semantic_suggestions&#39;] = sims query_df[&#39;semantic_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;semantic_suggestions&#39;], k = 10), axis = 1) Back to top.. Re-Ranking # Init models for reranking biencoder = SentenceTransformer(&#39;multi-qa-MiniLM-L6-cos-v1&#39;) crossencoderembeddingmodel = CrossEncoder(&#39;cross-encoder/ms-marco-MiniLM-L-6-v2&#39;) # Set sequence length biencoder.max_seq_length = 512 # Num docs topk = 100 modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/11.6k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/383 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/794 [00:00&lt;?, ?B/s] pytorch_model.bin: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] /opt/conda/lib/python3.10/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly. To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage() return self.fget.__get__(instance, owner)() tokenizer_config.json: 0%| | 0.00/316 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] # Perform initial encoding corpus_embeddings = biencoder.encode(product_df[&#39;text&#39;], convert_to_tensor = True, show_progress_bar = True) query_embeddings = biencoder.encode(query_df[&#39;query&#39;].iloc[0], convert_to_tensor = True, show_progress_bar = True) #.cuda() Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] Batches: 0%| | 0/1 [00:00&lt;?, ?it/s] # Extract 100 relevant passages for each query hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Inspection Re-Rank the products cross_inp = [[query_df[&#39;query&#39;].iloc[0], product_df[&#39;text&#39;][hit[&#39;corpus_id&#39;]]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx][&#39;score&#39;] = cross_scores[idx] # Examine outputs print(f&quot;Query Selection- {query_df[&#39;query&#39;].iloc[0]}&quot;) print(&quot;Top-3 Re-Ranked Hits&quot;) hits = sorted(hits, key = lambda x: x[&#39;score&#39;], reverse = True) for hit in hits[0:3]: print(&quot;\t{:.3f}\t{}&quot;.format(hit[&#39;score&#39;], product_df[&#39;product_name&#39;][hit[&#39;corpus_id&#39;]].replace(&quot;\n&quot;, &quot; &quot;))) Batches: 0%| | 0/4 [00:00&lt;?, ?it/s] Query Selection- salon chair Top-3 Re-Ranked Hits 8.191 barberpub salon massage chair 8.156 hair salon chair 7.957 reclining faux leather massage chair %%capture # Perform semantic reranking on the data query_df[&#39;reranked&#39;] = query_df[&#39;query&#39;].apply(lambda x: execute_reranking(product_df[&#39;text&#39;], x)) query_df[&#39;reranking_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;reranked&#39;], k = 10), axis = 1) Back to top.. Evaluation print(&#39;Semantic Scoring Results- MAPE scores&#39;) print(f&quot;TF-IDF on the Queries was {round(query_df.loc[:, &#39;score&#39;].mean(), 3)}&quot;) print(f&quot;BM25 on the Queries was {round(np.mean(query_df[&#39;bm_score&#39;]), 3)}&quot;) print(f&quot;Cosine similarity of the embeddings on the Queries was {round(query_df.loc[:, &#39;semantic_score&#39;].mean(), 3)}&quot;) print(f&quot;Semantic ReRanking on the Queries was {round(query_df.loc[:, &#39;reranking_score&#39;].mean(), 3)}&quot;) Semantic Scoring Results- MAPE scores TF-IDF on the Queries was 0.272 BM25 on the Queries was 0.261 Cosine similarity of the embeddings on the Queries was 0.323 Semantic ReRanking on the Queries was 0.437 Back to top.." />
+<link rel="canonical" href="http://localhost:4000/2024/12/10/semantic-search.html" />
+<meta property="og:url" content="http://localhost:4000/2024/12/10/semantic-search.html" />
+<meta property="og:site_name" content="Zan Sadiq" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-12-10T00:00:00-05:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Semantic Search" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2024-12-10T00:00:00-05:00","datePublished":"2024-12-10T00:00:00-05:00","description":"Semantic Search In this exercise, we will use various techniques to assess search relevance by testing “Mean Absolute Percent Error” (MAPE) of our algorithms and their ability to retrieve relevant products based on various search queries. The techniques we will use include: -TF-IDF -BM25 -Sentence Embeddings -Semantic ReRanking -Evaluation # Install the required packages into the environment !pip install rank-bm25 sentence-transformers torch transformers Collecting rank-bm25 Downloading rank_bm25-0.2.2-py3-none-any.whl.metadata (3.2 kB) Collecting sentence-transformers Downloading sentence_transformers-2.7.0-py3-none-any.whl.metadata (11 kB) Requirement already satisfied: torch in /opt/conda/lib/python3.10/site-packages (2.1.2+cpu) Requirement already satisfied: transformers in /opt/conda/lib/python3.10/site-packages (4.39.3) Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from rank-bm25) (1.26.4) Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (4.66.1) Requirement already satisfied: scikit-learn in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.2.2) Requirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.11.4) Requirement already satisfied: huggingface-hub&gt;=0.15.1 in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (0.22.2) Requirement already satisfied: Pillow in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (9.5.0) Requirement already satisfied: filelock in /opt/conda/lib/python3.10/site-packages (from torch) (3.13.1) Requirement already satisfied: typing-extensions in /opt/conda/lib/python3.10/site-packages (from torch) (4.9.0) Requirement already satisfied: sympy in /opt/conda/lib/python3.10/site-packages (from torch) (1.12) Requirement already satisfied: networkx in /opt/conda/lib/python3.10/site-packages (from torch) (3.2.1) Requirement already satisfied: jinja2 in /opt/conda/lib/python3.10/site-packages (from torch) (3.1.2) Requirement already satisfied: fsspec in /opt/conda/lib/python3.10/site-packages (from torch) (2024.2.0) Requirement already satisfied: packaging&gt;=20.0 in /opt/conda/lib/python3.10/site-packages (from transformers) (21.3) Requirement already satisfied: pyyaml&gt;=5.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (6.0.1) Requirement already satisfied: regex!=2019.12.17 in /opt/conda/lib/python3.10/site-packages (from transformers) (2023.12.25) Requirement already satisfied: requests in /opt/conda/lib/python3.10/site-packages (from transformers) (2.31.0) Requirement already satisfied: tokenizers&lt;0.19,&gt;=0.14 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.15.2) Requirement already satisfied: safetensors&gt;=0.4.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.4.3) Requirement already satisfied: pyparsing!=3.0.5,&gt;=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging&gt;=20.0-&gt;transformers) (3.1.1) Requirement already satisfied: MarkupSafe&gt;=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2-&gt;torch) (2.1.3) Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.3.2) Requirement already satisfied: idna&lt;4,&gt;=2.5 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.6) Requirement already satisfied: urllib3&lt;3,&gt;=1.21.1 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (1.26.18) Requirement already satisfied: certifi&gt;=2017.4.17 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (2024.2.2) Requirement already satisfied: joblib&gt;=1.1.1 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (1.4.0) Requirement already satisfied: threadpoolctl&gt;=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (3.2.0) Requirement already satisfied: mpmath&gt;=0.19 in /opt/conda/lib/python3.10/site-packages (from sympy-&gt;torch) (1.3.0) Downloading rank_bm25-0.2.2-py3-none-any.whl (8.6 kB) Downloading sentence_transformers-2.7.0-py3-none-any.whl (171 kB) \u001b[2K \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m171.5/171.5 kB\u001b[0m \u001b[31m1.4 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m \u001b[?25hInstalling collected packages: rank-bm25, sentence-transformers Successfully installed rank-bm25-0.2.2 sentence-transformers-2.7.0 # Import libraries import numpy as np import pandas as pd import os from sklearn.feature_extraction.text import TfidfVectorizer from sklearn.metrics.pairwise import cosine_similarity import string import re from rank_bm25 import BM25Okapi from sentence_transformers import SentenceTransformer, CrossEncoder, util import torch.nn.functional as F from torch import Tensor from transformers import AutoTokenizer, AutoModel # Check data files for dirname, _, filenames in os.walk(&#39;/kaggle/input&#39;): for filename in filenames: print(os.path.join(dirname, filename)) /kaggle/input/wayfair-wands-dataset/query.csv /kaggle/input/wayfair-wands-dataset/product.csv /kaggle/input/wayfair-wands-dataset/label.csv # Compile functions for later implementation def average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -&gt; Tensor: last_hidden = last_hidden_states.masked_fill(~attention_mask[..., None].bool(), 0.0) return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None] # Function to lookup query matches def get_exact_matches_for_(query): labels = label_df[label_df[&#39;query_id&#39;] == query] return labels[labels[&#39;label&#39;] == &#39;Exact&#39;][&#39;product_id&#39;].values # Function to get tf-idf results def get_tfidf_products(x): return cosine_similarity(vec.transform([x]), matrix).flatten().argsort()[-10:][::-1] #define functions for evaluating retrieval performance def map_at_k(true_ids, predicted_ids, k = 10): &quot;&quot;&quot; Calculate the Mean Average Precision at K (MAP@K). Parameters: true_ids (list): List of relevant product IDs. predicted_ids (list): List of predicted product IDs. k (int): Number of top elements to consider. NOTE: IF you wish to change top k, please provide a justification for choosing the new value Returns: float: MAP@K score. &quot;&quot;&quot; #if either list is empty, return 0 if not len(true_ids) or not len(predicted_ids): return 0.0 score = 0.0 num_hits = 0.0 # Calculate score for i, p_id in enumerate(predicted_ids[:k]): if p_id in true_ids and p_id not in predicted_ids[:i]: num_hits += 1.0 score += num_hits / (i + 1.0) # Return MAPE return score / min(len(true_ids), k) # Function to execute bm search def execute_bm_search(q): return np.argsort(bm25.get_scores(q.split(&#39; &#39;)))[-10:] # Function to perform reranking def execute_reranking(data, query): # Translate query query_embeddings = biencoder.encode(query, convert_to_tensor = True) #.cuda() # Get cosine similarity hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Perform reranking cross_inp = [[query, data[hit[&#39;corpus_id&#39;]]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx][&#39;score&#39;] = cross_scores[idx] sortie = sorted(hits, key = lambda x: x[&#39;score&#39;], reverse = True)[0:10] return [item[&#39;corpus_id&#39;] for item in sortie] # Load the components query_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/query.csv&quot;, sep = &#39;\\t&#39;) product_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/product.csv&quot;, sep = &#39;\\t&#39;) label_df = pd.read_csv(&quot;/kaggle/input/wayfair-wands-dataset/label.csv&quot;, sep = &#39;\\t&#39;) # Inspect initial dataframes product_df.head() product_id product_name product_class category hierarchy product_description product_features rating_count average_rating review_count 0 0 solid wood platform bed Beds Furniture / Bedroom Furniture / Beds &amp; Headboa... good , deep sleep can be quite difficult to ha... overallwidth-sidetoside:64.7|dsprimaryproducts... 15.0 4.5 15.0 1 1 all-clad 7 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... create delicious slow-cooked meals , from tend... capacityquarts:7|producttype : slow cooker|pro... 100.0 2.0 98.0 2 2 all-clad electrics 6.5 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... prepare home-cooked meals on any schedule with... features : keep warm setting|capacityquarts:6.... 208.0 3.0 181.0 3 3 all-clad all professional tools pizza cutter Slicers, Peelers And Graters Browse By Brand / All-Clad this original stainless tool was designed to c... overallwidth-sidetoside:3.5|warrantylength : l... 69.0 4.5 42.0 4 4 baldwin prestige alcott passage knob with roun... Door Knobs Home Improvement / Doors &amp; Door Hardware / Doo... the hardware has a rich heritage of delivering... compatibledoorthickness:1.375 &#39;&#39; |countryofori... 70.0 5.0 42.0 product_df.shape (42994, 9) query_df.head() query_id query query_class 0 0 salon chair Massage Chairs 1 1 smart coffee table Coffee &amp; Cocktail Tables 2 2 dinosaur Kids Wall Décor 3 3 turquoise pillows Accent Pillows 4 4 chair and a half recliner Recliners query_df.shape[0] 480 label_df.head() id query_id product_id label 0 0 0 25434 Exact 1 1 0 12088 Irrelevant 2 2 0 42931 Exact 3 3 0 2636 Exact 4 4 0 42923 Exact product_df.isnull().sum() product_id 0 product_name 0 product_class 2852 category hierarchy 1556 product_description 6008 product_features 0 rating_count 9452 average_rating 9452 review_count 9452 dtype: int64 # Combine fields and process text product_df[&#39;text&#39;] = product_df[&#39;product_name&#39;] + &#39; &#39; + product_df[&#39;product_description&#39;].fillna(&#39;&#39;) product_df[&#39;text&#39;] = product_df[&#39;text&#39;].apply(lambda x: x.translate(str.maketrans(&#39;&#39;, &#39;&#39;, string.punctuation))) product_df[&#39;text&#39;] = product_df[&#39;text&#39;].apply(lambda x: re.sub(&#39;\\d+&#39;, &#39;&#39;, x).lower().strip().replace(&#39; &#39;, &#39; &#39;)) Back to top.. TF-IDF # Calculate TF-IDF vec = TfidfVectorizer() tfidf = vec.fit(product_df[&#39;text&#39;]) matrix = tfidf.transform(product_df[&#39;text&#39;]) # Use the product ledger to calculate exact matches for each suggestion query_df[&#39;matches&#39;] = query_df[&#39;query_id&#39;].apply(get_exact_matches_for_) # Use TF-IDF to calculate cosine similarity and return similar entries query_df[&#39;suggestions&#39;] = query_df[&#39;query&#39;].apply(get_tfidf_products) # Calclate Mean Average Precision MAPE query_df[&#39;score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;suggestions&#39;], k = 10), axis = 1) Back to top.. BM25 # Init model bm25 = BM25Okapi(product_df[&#39;text&#39;].apply(lambda x: x.split(&#39; &#39;))) # Add BM result to data query_df[&#39;bm_suggestions&#39;] = query_df[&#39;query&#39;].apply(execute_bm_search) # Score BM25 query_df[&#39;bm_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;bm_suggestions&#39;], k = 10), axis = 1) Back to top.. Embeddings # Prepare an embedding model queries = [] passages = [] for idx, row in query_df.iterrows(): input = f&quot;query: {row[&#39;query&#39;]}&quot; queries.append(input) for idx, row in product_df.iterrows(): input = f&quot;passage: {row[&#39;text&#39;]}&quot; passages.append(input) input_texts = queries + passages # Init model embedder = SentenceTransformer(&quot;all-MiniLM-L6-v2&quot;) modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/10.7k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/350 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] # Apply embeddings to data %time corpus_embeddings = embedder.encode(passages, convert_to_tensor = True) Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] CPU times: user 31min 22s, sys: 3min 1s, total: 34min 24s Wall time: 17min 8s %time query_embeddings = embedder.encode(queries, convert_to_tensor = True) Batches: 0%| | 0/15 [00:00&lt;?, ?it/s] CPU times: user 3.81 s, sys: 21.2 ms, total: 3.83 s Wall time: 1.92 s # Embed the corpus #corpus_embeddings = corpus_embeddings.to(&quot;cuda&quot;) corpus_embeddings = util.normalize_embeddings(corpus_embeddings) # Embed the queries #query_embeddings = query_embeddings.to(&quot;cuda&quot;) query_embeddings = util.normalize_embeddings(query_embeddings) # Comnpute cosine simi9larities hits = util.semantic_search(query_embeddings, corpus_embeddings, score_function = util.dot_score, top_k = 10) # ECompile semantic similarity back into dataset sims = [[y[&#39;corpus_id&#39;] for y in x] for x in hits] # Add the scores to the original data query_df[&#39;semantic_suggestions&#39;] = sims query_df[&#39;semantic_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;semantic_suggestions&#39;], k = 10), axis = 1) Back to top.. Re-Ranking # Init models for reranking biencoder = SentenceTransformer(&#39;multi-qa-MiniLM-L6-cos-v1&#39;) crossencoderembeddingmodel = CrossEncoder(&#39;cross-encoder/ms-marco-MiniLM-L-6-v2&#39;) # Set sequence length biencoder.max_seq_length = 512 # Num docs topk = 100 modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/11.6k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/383 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/794 [00:00&lt;?, ?B/s] pytorch_model.bin: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] /opt/conda/lib/python3.10/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly. To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage() return self.fget.__get__(instance, owner)() tokenizer_config.json: 0%| | 0.00/316 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] # Perform initial encoding corpus_embeddings = biencoder.encode(product_df[&#39;text&#39;], convert_to_tensor = True, show_progress_bar = True) query_embeddings = biencoder.encode(query_df[&#39;query&#39;].iloc[0], convert_to_tensor = True, show_progress_bar = True) #.cuda() Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] Batches: 0%| | 0/1 [00:00&lt;?, ?it/s] # Extract 100 relevant passages for each query hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Inspection Re-Rank the products cross_inp = [[query_df[&#39;query&#39;].iloc[0], product_df[&#39;text&#39;][hit[&#39;corpus_id&#39;]]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx][&#39;score&#39;] = cross_scores[idx] # Examine outputs print(f&quot;Query Selection- {query_df[&#39;query&#39;].iloc[0]}&quot;) print(&quot;Top-3 Re-Ranked Hits&quot;) hits = sorted(hits, key = lambda x: x[&#39;score&#39;], reverse = True) for hit in hits[0:3]: print(&quot;\\t{:.3f}\\t{}&quot;.format(hit[&#39;score&#39;], product_df[&#39;product_name&#39;][hit[&#39;corpus_id&#39;]].replace(&quot;\\n&quot;, &quot; &quot;))) Batches: 0%| | 0/4 [00:00&lt;?, ?it/s] Query Selection- salon chair Top-3 Re-Ranked Hits 8.191 barberpub salon massage chair 8.156 hair salon chair 7.957 reclining faux leather massage chair %%capture # Perform semantic reranking on the data query_df[&#39;reranked&#39;] = query_df[&#39;query&#39;].apply(lambda x: execute_reranking(product_df[&#39;text&#39;], x)) query_df[&#39;reranking_score&#39;] = query_df.apply(lambda x: map_at_k(x[&#39;matches&#39;], x[&#39;reranked&#39;], k = 10), axis = 1) Back to top.. Evaluation print(&#39;Semantic Scoring Results- MAPE scores&#39;) print(f&quot;TF-IDF on the Queries was {round(query_df.loc[:, &#39;score&#39;].mean(), 3)}&quot;) print(f&quot;BM25 on the Queries was {round(np.mean(query_df[&#39;bm_score&#39;]), 3)}&quot;) print(f&quot;Cosine similarity of the embeddings on the Queries was {round(query_df.loc[:, &#39;semantic_score&#39;].mean(), 3)}&quot;) print(f&quot;Semantic ReRanking on the Queries was {round(query_df.loc[:, &#39;reranking_score&#39;].mean(), 3)}&quot;) Semantic Scoring Results- MAPE scores TF-IDF on the Queries was 0.272 BM25 on the Queries was 0.261 Cosine similarity of the embeddings on the Queries was 0.323 Semantic ReRanking on the Queries was 0.437 Back to top..","headline":"Semantic Search","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2024/12/10/semantic-search.html"},"url":"http://localhost:4000/2024/12/10/semantic-search.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Zan Sadiq" />
+</head>
+<body><header class="site-header">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Zan Sadiq</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/resume/">Resume</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Semantic Search</h1>
+    <p class="post-meta"><time class="dt-published" datetime="2024-12-10T00:00:00-05:00" itemprop="datePublished">
+        Dec 10, 2024
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p><a class="anchor" id="top"></a></p>
+
+<h1 id="semantic-search">Semantic Search</h1>
+
+<p>In this exercise, we will use various techniques to assess search relevance by testing “Mean Absolute Percent Error” (MAPE) of our algorithms and their ability to retrieve relevant products based on various search queries.</p>
+
+<p>The techniques we will use include:</p>
+
+<p>-<a href="#tfidf">TF-IDF</a></p>
+
+<p>-<a href="#bm">BM25</a></p>
+
+<p>-<a href="#embeddings">Sentence Embeddings</a></p>
+
+<p>-<a href="#reranking">Semantic ReRanking</a></p>
+
+<p>-<a href="#eval">Evaluation</a></p>
+
+<hr />
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Install the required packages into the environment
+</span><span class="err">!</span><span class="n">pip</span> <span class="n">install</span> <span class="n">rank</span><span class="o">-</span><span class="n">bm25</span> <span class="n">sentence</span><span class="o">-</span><span class="n">transformers</span> <span class="n">torch</span> <span class="n">transformers</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Collecting rank-bm25
+  Downloading rank_bm25-0.2.2-py3-none-any.whl.metadata (3.2 kB)
+Collecting sentence-transformers
+  Downloading sentence_transformers-2.7.0-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: torch in /opt/conda/lib/python3.10/site-packages (2.1.2+cpu)
+Requirement already satisfied: transformers in /opt/conda/lib/python3.10/site-packages (4.39.3)
+Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from rank-bm25) (1.26.4)
+Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (4.66.1)
+Requirement already satisfied: scikit-learn in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.2.2)
+Requirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.11.4)
+Requirement already satisfied: huggingface-hub&gt;=0.15.1 in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (0.22.2)
+Requirement already satisfied: Pillow in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (9.5.0)
+Requirement already satisfied: filelock in /opt/conda/lib/python3.10/site-packages (from torch) (3.13.1)
+Requirement already satisfied: typing-extensions in /opt/conda/lib/python3.10/site-packages (from torch) (4.9.0)
+Requirement already satisfied: sympy in /opt/conda/lib/python3.10/site-packages (from torch) (1.12)
+Requirement already satisfied: networkx in /opt/conda/lib/python3.10/site-packages (from torch) (3.2.1)
+Requirement already satisfied: jinja2 in /opt/conda/lib/python3.10/site-packages (from torch) (3.1.2)
+Requirement already satisfied: fsspec in /opt/conda/lib/python3.10/site-packages (from torch) (2024.2.0)
+Requirement already satisfied: packaging&gt;=20.0 in /opt/conda/lib/python3.10/site-packages (from transformers) (21.3)
+Requirement already satisfied: pyyaml&gt;=5.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (6.0.1)
+Requirement already satisfied: regex!=2019.12.17 in /opt/conda/lib/python3.10/site-packages (from transformers) (2023.12.25)
+Requirement already satisfied: requests in /opt/conda/lib/python3.10/site-packages (from transformers) (2.31.0)
+Requirement already satisfied: tokenizers&lt;0.19,&gt;=0.14 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.15.2)
+Requirement already satisfied: safetensors&gt;=0.4.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.4.3)
+Requirement already satisfied: pyparsing!=3.0.5,&gt;=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging&gt;=20.0-&gt;transformers) (3.1.1)
+Requirement already satisfied: MarkupSafe&gt;=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2-&gt;torch) (2.1.3)
+Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.3.2)
+Requirement already satisfied: idna&lt;4,&gt;=2.5 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.6)
+Requirement already satisfied: urllib3&lt;3,&gt;=1.21.1 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (1.26.18)
+Requirement already satisfied: certifi&gt;=2017.4.17 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (2024.2.2)
+Requirement already satisfied: joblib&gt;=1.1.1 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (1.4.0)
+Requirement already satisfied: threadpoolctl&gt;=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (3.2.0)
+Requirement already satisfied: mpmath&gt;=0.19 in /opt/conda/lib/python3.10/site-packages (from sympy-&gt;torch) (1.3.0)
+Downloading rank_bm25-0.2.2-py3-none-any.whl (8.6 kB)
+Downloading sentence_transformers-2.7.0-py3-none-any.whl (171 kB)
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m171.5/171.5 kB[0m [31m1.4 MB/s[0m eta [36m0:00:00[0m
+[?25hInstalling collected packages: rank-bm25, sentence-transformers
+Successfully installed rank-bm25-0.2.2 sentence-transformers-2.7.0
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Import libraries
+</span><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span> 
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span> 
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics.pairwise</span> <span class="kn">import</span> <span class="n">cosine_similarity</span>
+<span class="kn">import</span> <span class="n">string</span>
+<span class="kn">import</span> <span class="n">re</span>
+<span class="kn">from</span> <span class="n">rank_bm25</span> <span class="kn">import</span> <span class="n">BM25Okapi</span>
+<span class="kn">from</span> <span class="n">sentence_transformers</span> <span class="kn">import</span> <span class="n">SentenceTransformer</span><span class="p">,</span> <span class="n">CrossEncoder</span><span class="p">,</span> <span class="n">util</span>
+<span class="kn">import</span> <span class="n">torch.nn.functional</span> <span class="k">as</span> <span class="n">F</span>
+<span class="kn">from</span> <span class="n">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">AutoTokenizer</span><span class="p">,</span> <span class="n">AutoModel</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Check data files
+</span><span class="k">for</span> <span class="n">dirname</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">filenames</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">walk</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input</span><span class="sh">'</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/kaggle/input/wayfair-wands-dataset/query.csv
+/kaggle/input/wayfair-wands-dataset/product.csv
+/kaggle/input/wayfair-wands-dataset/label.csv
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Compile functions for later implementation
+</span><span class="k">def</span> <span class="nf">average_pool</span><span class="p">(</span><span class="n">last_hidden_states</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">attention_mask</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+
+    <span class="n">last_hidden</span> <span class="o">=</span> <span class="n">last_hidden_states</span><span class="p">.</span><span class="nf">masked_fill</span><span class="p">(</span><span class="o">~</span><span class="n">attention_mask</span><span class="p">[...,</span> <span class="bp">None</span><span class="p">].</span><span class="nf">bool</span><span class="p">(),</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">last_hidden</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">attention_mask</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)[...,</span> <span class="bp">None</span><span class="p">]</span>
+
+<span class="c1"># Function to lookup query matches
+</span><span class="k">def</span> <span class="nf">get_exact_matches_for_</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">label_df</span><span class="p">[</span><span class="n">label_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query_id</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">query</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">labels</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="sh">'</span><span class="s">label</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="sh">'</span><span class="s">Exact</span><span class="sh">'</span><span class="p">][</span><span class="sh">'</span><span class="s">product_id</span><span class="sh">'</span><span class="p">].</span><span class="n">values</span>
+
+<span class="c1"># Function to get tf-idf results
+</span><span class="k">def</span> <span class="nf">get_tfidf_products</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+
+    <span class="k">return</span> <span class="nf">cosine_similarity</span><span class="p">(</span><span class="n">vec</span><span class="p">.</span><span class="nf">transform</span><span class="p">([</span><span class="n">x</span><span class="p">]),</span> <span class="n">matrix</span><span class="p">).</span><span class="nf">flatten</span><span class="p">().</span><span class="nf">argsort</span><span class="p">()[</span><span class="o">-</span><span class="mi">10</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="c1">#define functions for evaluating retrieval performance
+</span><span class="k">def</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">true_ids</span><span class="p">,</span> <span class="n">predicted_ids</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
+    
+    <span class="sh">"""</span><span class="s">
+    Calculate the Mean Average Precision at K (MAP@K).
+
+    Parameters:
+    true_ids (list): List of relevant product IDs.
+    predicted_ids (list): List of predicted product IDs.
+    k (int): Number of top elements to consider.
+             NOTE: IF you wish to change top k, please provide a justification for choosing the new value
+
+    Returns:
+    float: MAP@K score.
+    </span><span class="sh">"""</span>
+    <span class="c1">#if either list is empty, return 0
+</span>    <span class="k">if</span> <span class="ow">not</span> <span class="nf">len</span><span class="p">(</span><span class="n">true_ids</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nf">len</span><span class="p">(</span><span class="n">predicted_ids</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="n">score</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">num_hits</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="c1"># Calculate score
+</span>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p_id</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">predicted_ids</span><span class="p">[:</span><span class="n">k</span><span class="p">]):</span>
+
+        <span class="k">if</span> <span class="n">p_id</span> <span class="ow">in</span> <span class="n">true_ids</span> <span class="ow">and</span> <span class="n">p_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">predicted_ids</span><span class="p">[:</span><span class="n">i</span><span class="p">]:</span>
+
+            <span class="n">num_hits</span> <span class="o">+=</span> <span class="mf">1.0</span>
+            <span class="n">score</span> <span class="o">+=</span> <span class="n">num_hits</span> <span class="o">/</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
+    
+    <span class="c1"># Return MAPE
+</span>    <span class="k">return</span> <span class="n">score</span> <span class="o">/</span> <span class="nf">min</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">true_ids</span><span class="p">),</span> <span class="n">k</span><span class="p">)</span>
+
+<span class="c1"># Function to execute bm search
+</span><span class="k">def</span> <span class="nf">execute_bm_search</span><span class="p">(</span><span class="n">q</span><span class="p">):</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="p">.</span><span class="nf">argsort</span><span class="p">(</span><span class="n">bm25</span><span class="p">.</span><span class="nf">get_scores</span><span class="p">(</span><span class="n">q</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">)))[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>
+
+<span class="c1"># Function to perform reranking
+</span><span class="k">def</span> <span class="nf">execute_reranking</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+
+    <span class="c1"># Translate query
+</span>    <span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">biencoder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span> <span class="c1">#.cuda()
+</span>
+    <span class="c1"># Get cosine similarity
+</span>    <span class="n">hits</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">semantic_search</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">,</span> <span class="n">corpus_embeddings</span><span class="p">,</span> <span class="n">top_k</span> <span class="o">=</span> <span class="n">topk</span><span class="p">)</span>
+    <span class="n">hits</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Perform reranking
+</span>    <span class="n">cross_inp</span> <span class="o">=</span> <span class="p">[[</span><span class="n">query</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]]]</span> <span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">]</span>
+    <span class="n">cross_scores</span> <span class="o">=</span> <span class="n">crossencoderembeddingmodel</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">cross_inp</span><span class="p">)</span>
+
+    <span class="c1"># Sort results by the cross-encoder scores
+</span>    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">cross_scores</span><span class="p">)):</span>
+
+        <span class="n">hits</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross_scores</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+    <span class="n">sortie</span> <span class="o">=</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">],</span> <span class="n">reverse</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sortie</span><span class="p">]</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Load the components
+</span><span class="n">query_df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">"</span><span class="s">/kaggle/input/wayfair-wands-dataset/query.csv</span><span class="sh">"</span><span class="p">,</span> <span class="n">sep</span> <span class="o">=</span> <span class="sh">'</span><span class="se">\t</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">product_df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">"</span><span class="s">/kaggle/input/wayfair-wands-dataset/product.csv</span><span class="sh">"</span><span class="p">,</span> <span class="n">sep</span> <span class="o">=</span> <span class="sh">'</span><span class="se">\t</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">label_df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">"</span><span class="s">/kaggle/input/wayfair-wands-dataset/label.csv</span><span class="sh">"</span><span class="p">,</span> <span class="n">sep</span> <span class="o">=</span> <span class="sh">'</span><span class="se">\t</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Inspect initial dataframes
+</span><span class="n">product_df</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>product_id</th>
+      <th>product_name</th>
+      <th>product_class</th>
+      <th>category hierarchy</th>
+      <th>product_description</th>
+      <th>product_features</th>
+      <th>rating_count</th>
+      <th>average_rating</th>
+      <th>review_count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>solid wood platform bed</td>
+      <td>Beds</td>
+      <td>Furniture / Bedroom Furniture / Beds &amp; Headboa...</td>
+      <td>good , deep sleep can be quite difficult to ha...</td>
+      <td>overallwidth-sidetoside:64.7|dsprimaryproducts...</td>
+      <td>15.0</td>
+      <td>4.5</td>
+      <td>15.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>all-clad 7 qt . slow cooker</td>
+      <td>Slow Cookers</td>
+      <td>Kitchen &amp; Tabletop / Small Kitchen Appliances ...</td>
+      <td>create delicious slow-cooked meals , from tend...</td>
+      <td>capacityquarts:7|producttype : slow cooker|pro...</td>
+      <td>100.0</td>
+      <td>2.0</td>
+      <td>98.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>all-clad electrics 6.5 qt . slow cooker</td>
+      <td>Slow Cookers</td>
+      <td>Kitchen &amp; Tabletop / Small Kitchen Appliances ...</td>
+      <td>prepare home-cooked meals on any schedule with...</td>
+      <td>features : keep warm setting|capacityquarts:6....</td>
+      <td>208.0</td>
+      <td>3.0</td>
+      <td>181.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>all-clad all professional tools pizza cutter</td>
+      <td>Slicers, Peelers And Graters</td>
+      <td>Browse By Brand / All-Clad</td>
+      <td>this original stainless tool was designed to c...</td>
+      <td>overallwidth-sidetoside:3.5|warrantylength : l...</td>
+      <td>69.0</td>
+      <td>4.5</td>
+      <td>42.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>baldwin prestige alcott passage knob with roun...</td>
+      <td>Door Knobs</td>
+      <td>Home Improvement / Doors &amp; Door Hardware / Doo...</td>
+      <td>the hardware has a rich heritage of delivering...</td>
+      <td>compatibledoorthickness:1.375 '' |countryofori...</td>
+      <td>70.0</td>
+      <td>5.0</td>
+      <td>42.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">product_df</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(42994, 9)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">query_df</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>query_id</th>
+      <th>query</th>
+      <th>query_class</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>salon chair</td>
+      <td>Massage Chairs</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>smart coffee table</td>
+      <td>Coffee &amp; Cocktail Tables</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>dinosaur</td>
+      <td>Kids Wall Décor</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>turquoise pillows</td>
+      <td>Accent Pillows</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>chair and a half recliner</td>
+      <td>Recliners</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">query_df</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>480
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">label_df</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>query_id</th>
+      <th>product_id</th>
+      <th>label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0</td>
+      <td>25434</td>
+      <td>Exact</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>0</td>
+      <td>12088</td>
+      <td>Irrelevant</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>0</td>
+      <td>42931</td>
+      <td>Exact</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>0</td>
+      <td>2636</td>
+      <td>Exact</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>0</td>
+      <td>42923</td>
+      <td>Exact</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">product_df</span><span class="p">.</span><span class="nf">isnull</span><span class="p">().</span><span class="nf">sum</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>product_id                0
+product_name              0
+product_class          2852
+category hierarchy     1556
+product_description    6008
+product_features          0
+rating_count           9452
+average_rating         9452
+review_count           9452
+dtype: int64
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Combine fields and process text
+</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">product_name</span><span class="sh">'</span><span class="p">]</span> <span class="o">+</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span> <span class="o">+</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">product_description</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="sh">''</span><span class="p">)</span>
+<span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">.</span><span class="nf">translate</span><span class="p">(</span><span class="nb">str</span><span class="p">.</span><span class="nf">maketrans</span><span class="p">(</span><span class="sh">''</span><span class="p">,</span> <span class="sh">''</span><span class="p">,</span> <span class="n">string</span><span class="p">.</span><span class="n">punctuation</span><span class="p">)))</span>
+<span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">re</span><span class="p">.</span><span class="nf">sub</span><span class="p">(</span><span class="sh">'</span><span class="s">\d+</span><span class="sh">'</span><span class="p">,</span> <span class="sh">''</span><span class="p">,</span> <span class="n">x</span><span class="p">).</span><span class="nf">lower</span><span class="p">().</span><span class="nf">strip</span><span class="p">().</span><span class="nf">replace</span><span class="p">(</span><span class="sh">'</span><span class="s">  </span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="tf-idf-">TF-IDF <a class="anchor" id="tfidf"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Calculate TF-IDF
+</span><span class="n">vec</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">()</span>
+<span class="n">tfidf</span> <span class="o">=</span> <span class="n">vec</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">matrix</span> <span class="o">=</span> <span class="n">tfidf</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">])</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Use the product ledger to calculate exact matches for each suggestion
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query_id</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="n">get_exact_matches_for_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Use TF-IDF to calculate cosine similarity and return similar entries
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">suggestions</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="n">get_tfidf_products</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Calclate Mean Average Precision MAPE
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">suggestions</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="bm25-">BM25 <a class="anchor" id="bm"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init model
+</span><span class="n">bm25</span> <span class="o">=</span> <span class="nc">BM25Okapi</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">)))</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Add BM result to data
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_suggestions</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="n">execute_bm_search</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Score BM25
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_suggestions</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="embeddings-">Embeddings <a class="anchor" id="embeddings"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Prepare an embedding model
+</span><span class="n">queries</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">passages</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">iterrows</span><span class="p">():</span>
+
+    <span class="nb">input</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">query: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span>
+    <span class="n">queries</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">product_df</span><span class="p">.</span><span class="nf">iterrows</span><span class="p">():</span>
+
+    <span class="nb">input</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">passage: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span>
+    <span class="n">passages</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+
+<span class="n">input_texts</span> <span class="o">=</span> <span class="n">queries</span> <span class="o">+</span> <span class="n">passages</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init model
+</span><span class="n">embedder</span> <span class="o">=</span> <span class="nc">SentenceTransformer</span><span class="p">(</span><span class="sh">"</span><span class="s">all-MiniLM-L6-v2</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>modules.json:   0%|          | 0.00/349 [00:00&lt;?, ?B/s]
+
+
+
+config_sentence_transformers.json:   0%|          | 0.00/116 [00:00&lt;?, ?B/s]
+
+
+
+README.md:   0%|          | 0.00/10.7k [00:00&lt;?, ?B/s]
+
+
+
+sentence_bert_config.json:   0%|          | 0.00/53.0 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/612 [00:00&lt;?, ?B/s]
+
+
+
+model.safetensors:   0%|          | 0.00/90.9M [00:00&lt;?, ?B/s]
+
+
+
+tokenizer_config.json:   0%|          | 0.00/350 [00:00&lt;?, ?B/s]
+
+
+
+vocab.txt:   0%|          | 0.00/232k [00:00&lt;?, ?B/s]
+
+
+
+tokenizer.json:   0%|          | 0.00/466k [00:00&lt;?, ?B/s]
+
+
+
+special_tokens_map.json:   0%|          | 0.00/112 [00:00&lt;?, ?B/s]
+
+
+
+1_Pooling/config.json:   0%|          | 0.00/190 [00:00&lt;?, ?B/s]
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Apply embeddings to data
+</span><span class="o">%</span><span class="n">time</span> <span class="n">corpus_embeddings</span> <span class="o">=</span> <span class="n">embedder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">passages</span><span class="p">,</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/1344 [00:00&lt;?, ?it/s]
+
+
+CPU times: user 31min 22s, sys: 3min 1s, total: 34min 24s
+Wall time: 17min 8s
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">%</span><span class="n">time</span> <span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">embedder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">queries</span><span class="p">,</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/15 [00:00&lt;?, ?it/s]
+
+
+CPU times: user 3.81 s, sys: 21.2 ms, total: 3.83 s
+Wall time: 1.92 s
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Embed the corpus
+#corpus_embeddings = corpus_embeddings.to("cuda")
+</span><span class="n">corpus_embeddings</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">normalize_embeddings</span><span class="p">(</span><span class="n">corpus_embeddings</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Embed the queries
+#query_embeddings = query_embeddings.to("cuda")
+</span><span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">normalize_embeddings</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Comnpute cosine simi9larities
+</span><span class="n">hits</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">semantic_search</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">,</span> <span class="n">corpus_embeddings</span><span class="p">,</span> <span class="n">score_function</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="n">dot_score</span><span class="p">,</span> <span class="n">top_k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ECompile semantic similarity back into dataset
+</span><span class="n">sims</span> <span class="o">=</span> <span class="p">[[</span><span class="n">y</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">]</span>
+
+<span class="c1"># Add the scores to the original data
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">semantic_suggestions</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">sims</span>
+
+<span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">semantic_score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">semantic_suggestions</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="re-ranking-">Re-Ranking <a class="anchor" id="reranking"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init models for reranking
+</span><span class="n">biencoder</span> <span class="o">=</span> <span class="nc">SentenceTransformer</span><span class="p">(</span><span class="sh">'</span><span class="s">multi-qa-MiniLM-L6-cos-v1</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">crossencoderembeddingmodel</span> <span class="o">=</span> <span class="nc">CrossEncoder</span><span class="p">(</span><span class="sh">'</span><span class="s">cross-encoder/ms-marco-MiniLM-L-6-v2</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Set sequence length
+</span><span class="n">biencoder</span><span class="p">.</span><span class="n">max_seq_length</span> <span class="o">=</span> <span class="mi">512</span>
+
+<span class="c1"># Num docs
+</span><span class="n">topk</span> <span class="o">=</span> <span class="mi">100</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>modules.json:   0%|          | 0.00/349 [00:00&lt;?, ?B/s]
+
+
+
+config_sentence_transformers.json:   0%|          | 0.00/116 [00:00&lt;?, ?B/s]
+
+
+
+README.md:   0%|          | 0.00/11.6k [00:00&lt;?, ?B/s]
+
+
+
+sentence_bert_config.json:   0%|          | 0.00/53.0 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/612 [00:00&lt;?, ?B/s]
+
+
+
+model.safetensors:   0%|          | 0.00/90.9M [00:00&lt;?, ?B/s]
+
+
+
+tokenizer_config.json:   0%|          | 0.00/383 [00:00&lt;?, ?B/s]
+
+
+
+vocab.txt:   0%|          | 0.00/232k [00:00&lt;?, ?B/s]
+
+
+
+tokenizer.json:   0%|          | 0.00/466k [00:00&lt;?, ?B/s]
+
+
+
+special_tokens_map.json:   0%|          | 0.00/112 [00:00&lt;?, ?B/s]
+
+
+
+1_Pooling/config.json:   0%|          | 0.00/190 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/794 [00:00&lt;?, ?B/s]
+
+
+
+pytorch_model.bin:   0%|          | 0.00/90.9M [00:00&lt;?, ?B/s]
+
+
+/opt/conda/lib/python3.10/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+
+
+
+tokenizer_config.json:   0%|          | 0.00/316 [00:00&lt;?, ?B/s]
+
+
+
+vocab.txt:   0%|          | 0.00/232k [00:00&lt;?, ?B/s]
+
+
+
+special_tokens_map.json:   0%|          | 0.00/112 [00:00&lt;?, ?B/s]
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Perform initial encoding
+</span><span class="n">corpus_embeddings</span> <span class="o">=</span> <span class="n">biencoder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">],</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">show_progress_bar</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+<span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">biencoder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">show_progress_bar</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span> <span class="c1">#.cuda()
+</span></code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/1344 [00:00&lt;?, ?it/s]
+
+
+
+Batches:   0%|          | 0/1 [00:00&lt;?, ?it/s]
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Extract 100 relevant passages for each query
+</span><span class="n">hits</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">semantic_search</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">,</span> <span class="n">corpus_embeddings</span><span class="p">,</span> <span class="n">top_k</span> <span class="o">=</span> <span class="n">topk</span><span class="p">)</span>
+<span class="n">hits</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Inspection Re-Rank the products
+</span><span class="n">cross_inp</span> <span class="o">=</span> <span class="p">[[</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">][</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]]]</span> <span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">]</span>
+<span class="n">cross_scores</span> <span class="o">=</span> <span class="n">crossencoderembeddingmodel</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">cross_inp</span><span class="p">)</span>
+
+<span class="c1"># Sort results by the cross-encoder scores
+</span><span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">cross_scores</span><span class="p">)):</span>
+
+    <span class="n">hits</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross_scores</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    
+<span class="c1"># Examine outputs
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Query Selection- </span><span class="si">{</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Top-3 Re-Ranked Hits</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">hits</span> <span class="o">=</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">],</span> <span class="n">reverse</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]:</span>
+
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\t</span><span class="s">{:.3f}</span><span class="se">\t</span><span class="s">{}</span><span class="sh">"</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">],</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">product_name</span><span class="sh">'</span><span class="p">][</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]].</span><span class="nf">replace</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s"> </span><span class="sh">"</span><span class="p">)))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/4 [00:00&lt;?, ?it/s]
+
+
+Query Selection- salon chair
+Top-3 Re-Ranked Hits
+	8.191	barberpub salon massage chair
+	8.156	hair salon chair
+	7.957	reclining faux leather massage chair
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">%%</span><span class="n">capture</span>
+
+<span class="c1"># Perform semantic reranking on the data
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">reranked</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">execute_reranking</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">reranking_score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">reranked</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="evaluation-">Evaluation <a class="anchor" id="eval"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="sh">'</span><span class="s">Semantic Scoring Results- MAPE scores</span><span class="sh">'</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">TF-IDF on the Queries was </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">query_df</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="si">:</span><span class="p">,</span> <span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">BM25 on the Queries was </span><span class="si">{</span><span class="nf">round</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_score</span><span class="sh">'</span><span class="p">]),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Cosine similarity of the embeddings on the Queries was </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">query_df</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="si">:</span><span class="p">,</span> <span class="sh">'</span><span class="s">semantic_score</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Semantic ReRanking on the Queries was </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">query_df</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="si">:</span><span class="p">,</span> <span class="sh">'</span><span class="s">reranking_score</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Semantic Scoring Results- MAPE scores
+TF-IDF on the Queries was 0.272
+BM25 on the Queries was 0.261
+Cosine similarity of the embeddings on the Queries was 0.323
+Semantic ReRanking on the Queries was 0.437
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+  </div><a class="u-url" href="/2024/12/10/semantic-search.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+        <p class="feed-subscribe">
+          <a href="http://localhost:4000/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <p>A resume site showing the data scientists portfolio</p>
+      </div>
+    </div>
+
+    <div class="social-links"><ul class="social-media-list"></ul>
+</div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

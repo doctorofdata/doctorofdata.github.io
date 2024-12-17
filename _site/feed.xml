@@ -1,0 +1,2590 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.3.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2024-12-17T06:10:11-05:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Zan Sadiq</title><subtitle>A resume site showing the data scientists portfolio</subtitle><entry><title type="html">Semantic Search</title><link href="http://localhost:4000/2024/12/10/semantic-search.html" rel="alternate" type="text/html" title="Semantic Search" /><published>2024-12-10T00:00:00-05:00</published><updated>2024-12-10T00:00:00-05:00</updated><id>http://localhost:4000/2024/12/10/semantic-search</id><content type="html" xml:base="http://localhost:4000/2024/12/10/semantic-search.html"><![CDATA[<p><a class="anchor" id="top"></a></p>
+
+<h1 id="semantic-search">Semantic Search</h1>
+
+<p>In this exercise, we will use various techniques to assess search relevance by testing “Mean Absolute Percent Error” (MAPE) of our algorithms and their ability to retrieve relevant products based on various search queries.</p>
+
+<p>The techniques we will use include:</p>
+
+<p>-<a href="#tfidf">TF-IDF</a></p>
+
+<p>-<a href="#bm">BM25</a></p>
+
+<p>-<a href="#embeddings">Sentence Embeddings</a></p>
+
+<p>-<a href="#reranking">Semantic ReRanking</a></p>
+
+<p>-<a href="#eval">Evaluation</a></p>
+
+<hr />
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Install the required packages into the environment
+</span><span class="err">!</span><span class="n">pip</span> <span class="n">install</span> <span class="n">rank</span><span class="o">-</span><span class="n">bm25</span> <span class="n">sentence</span><span class="o">-</span><span class="n">transformers</span> <span class="n">torch</span> <span class="n">transformers</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Collecting rank-bm25
+  Downloading rank_bm25-0.2.2-py3-none-any.whl.metadata (3.2 kB)
+Collecting sentence-transformers
+  Downloading sentence_transformers-2.7.0-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: torch in /opt/conda/lib/python3.10/site-packages (2.1.2+cpu)
+Requirement already satisfied: transformers in /opt/conda/lib/python3.10/site-packages (4.39.3)
+Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from rank-bm25) (1.26.4)
+Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (4.66.1)
+Requirement already satisfied: scikit-learn in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.2.2)
+Requirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.11.4)
+Requirement already satisfied: huggingface-hub&gt;=0.15.1 in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (0.22.2)
+Requirement already satisfied: Pillow in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (9.5.0)
+Requirement already satisfied: filelock in /opt/conda/lib/python3.10/site-packages (from torch) (3.13.1)
+Requirement already satisfied: typing-extensions in /opt/conda/lib/python3.10/site-packages (from torch) (4.9.0)
+Requirement already satisfied: sympy in /opt/conda/lib/python3.10/site-packages (from torch) (1.12)
+Requirement already satisfied: networkx in /opt/conda/lib/python3.10/site-packages (from torch) (3.2.1)
+Requirement already satisfied: jinja2 in /opt/conda/lib/python3.10/site-packages (from torch) (3.1.2)
+Requirement already satisfied: fsspec in /opt/conda/lib/python3.10/site-packages (from torch) (2024.2.0)
+Requirement already satisfied: packaging&gt;=20.0 in /opt/conda/lib/python3.10/site-packages (from transformers) (21.3)
+Requirement already satisfied: pyyaml&gt;=5.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (6.0.1)
+Requirement already satisfied: regex!=2019.12.17 in /opt/conda/lib/python3.10/site-packages (from transformers) (2023.12.25)
+Requirement already satisfied: requests in /opt/conda/lib/python3.10/site-packages (from transformers) (2.31.0)
+Requirement already satisfied: tokenizers&lt;0.19,&gt;=0.14 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.15.2)
+Requirement already satisfied: safetensors&gt;=0.4.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.4.3)
+Requirement already satisfied: pyparsing!=3.0.5,&gt;=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging&gt;=20.0-&gt;transformers) (3.1.1)
+Requirement already satisfied: MarkupSafe&gt;=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2-&gt;torch) (2.1.3)
+Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.3.2)
+Requirement already satisfied: idna&lt;4,&gt;=2.5 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.6)
+Requirement already satisfied: urllib3&lt;3,&gt;=1.21.1 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (1.26.18)
+Requirement already satisfied: certifi&gt;=2017.4.17 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (2024.2.2)
+Requirement already satisfied: joblib&gt;=1.1.1 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (1.4.0)
+Requirement already satisfied: threadpoolctl&gt;=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (3.2.0)
+Requirement already satisfied: mpmath&gt;=0.19 in /opt/conda/lib/python3.10/site-packages (from sympy-&gt;torch) (1.3.0)
+Downloading rank_bm25-0.2.2-py3-none-any.whl (8.6 kB)
+Downloading sentence_transformers-2.7.0-py3-none-any.whl (171 kB)
+[2K   [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m171.5/171.5 kB[0m [31m1.4 MB/s[0m eta [36m0:00:00[0m
+[?25hInstalling collected packages: rank-bm25, sentence-transformers
+Successfully installed rank-bm25-0.2.2 sentence-transformers-2.7.0
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Import libraries
+</span><span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span> 
+<span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span> 
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">from</span> <span class="n">sklearn.feature_extraction.text</span> <span class="kn">import</span> <span class="n">TfidfVectorizer</span>
+<span class="kn">from</span> <span class="n">sklearn.metrics.pairwise</span> <span class="kn">import</span> <span class="n">cosine_similarity</span>
+<span class="kn">import</span> <span class="n">string</span>
+<span class="kn">import</span> <span class="n">re</span>
+<span class="kn">from</span> <span class="n">rank_bm25</span> <span class="kn">import</span> <span class="n">BM25Okapi</span>
+<span class="kn">from</span> <span class="n">sentence_transformers</span> <span class="kn">import</span> <span class="n">SentenceTransformer</span><span class="p">,</span> <span class="n">CrossEncoder</span><span class="p">,</span> <span class="n">util</span>
+<span class="kn">import</span> <span class="n">torch.nn.functional</span> <span class="k">as</span> <span class="n">F</span>
+<span class="kn">from</span> <span class="n">torch</span> <span class="kn">import</span> <span class="n">Tensor</span>
+<span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">AutoTokenizer</span><span class="p">,</span> <span class="n">AutoModel</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Check data files
+</span><span class="k">for</span> <span class="n">dirname</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">filenames</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">walk</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input</span><span class="sh">'</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/kaggle/input/wayfair-wands-dataset/query.csv
+/kaggle/input/wayfair-wands-dataset/product.csv
+/kaggle/input/wayfair-wands-dataset/label.csv
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Compile functions for later implementation
+</span><span class="k">def</span> <span class="nf">average_pool</span><span class="p">(</span><span class="n">last_hidden_states</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">attention_mask</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+
+    <span class="n">last_hidden</span> <span class="o">=</span> <span class="n">last_hidden_states</span><span class="p">.</span><span class="nf">masked_fill</span><span class="p">(</span><span class="o">~</span><span class="n">attention_mask</span><span class="p">[...,</span> <span class="bp">None</span><span class="p">].</span><span class="nf">bool</span><span class="p">(),</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">last_hidden</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">attention_mask</span><span class="p">.</span><span class="nf">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)[...,</span> <span class="bp">None</span><span class="p">]</span>
+
+<span class="c1"># Function to lookup query matches
+</span><span class="k">def</span> <span class="nf">get_exact_matches_for_</span><span class="p">(</span><span class="n">query</span><span class="p">):</span>
+
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">label_df</span><span class="p">[</span><span class="n">label_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query_id</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">query</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">labels</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="sh">'</span><span class="s">label</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="sh">'</span><span class="s">Exact</span><span class="sh">'</span><span class="p">][</span><span class="sh">'</span><span class="s">product_id</span><span class="sh">'</span><span class="p">].</span><span class="n">values</span>
+
+<span class="c1"># Function to get tf-idf results
+</span><span class="k">def</span> <span class="nf">get_tfidf_products</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+
+    <span class="k">return</span> <span class="nf">cosine_similarity</span><span class="p">(</span><span class="n">vec</span><span class="p">.</span><span class="nf">transform</span><span class="p">([</span><span class="n">x</span><span class="p">]),</span> <span class="n">matrix</span><span class="p">).</span><span class="nf">flatten</span><span class="p">().</span><span class="nf">argsort</span><span class="p">()[</span><span class="o">-</span><span class="mi">10</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+<span class="c1">#define functions for evaluating retrieval performance
+</span><span class="k">def</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">true_ids</span><span class="p">,</span> <span class="n">predicted_ids</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
+    
+    <span class="sh">"""</span><span class="s">
+    Calculate the Mean Average Precision at K (MAP@K).
+
+    Parameters:
+    true_ids (list): List of relevant product IDs.
+    predicted_ids (list): List of predicted product IDs.
+    k (int): Number of top elements to consider.
+             NOTE: IF you wish to change top k, please provide a justification for choosing the new value
+
+    Returns:
+    float: MAP@K score.
+    </span><span class="sh">"""</span>
+    <span class="c1">#if either list is empty, return 0
+</span>    <span class="k">if</span> <span class="ow">not</span> <span class="nf">len</span><span class="p">(</span><span class="n">true_ids</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nf">len</span><span class="p">(</span><span class="n">predicted_ids</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="n">score</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">num_hits</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="c1"># Calculate score
+</span>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p_id</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">predicted_ids</span><span class="p">[:</span><span class="n">k</span><span class="p">]):</span>
+
+        <span class="k">if</span> <span class="n">p_id</span> <span class="ow">in</span> <span class="n">true_ids</span> <span class="ow">and</span> <span class="n">p_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">predicted_ids</span><span class="p">[:</span><span class="n">i</span><span class="p">]:</span>
+
+            <span class="n">num_hits</span> <span class="o">+=</span> <span class="mf">1.0</span>
+            <span class="n">score</span> <span class="o">+=</span> <span class="n">num_hits</span> <span class="o">/</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">)</span>
+    
+    <span class="c1"># Return MAPE
+</span>    <span class="k">return</span> <span class="n">score</span> <span class="o">/</span> <span class="nf">min</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">true_ids</span><span class="p">),</span> <span class="n">k</span><span class="p">)</span>
+
+<span class="c1"># Function to execute bm search
+</span><span class="k">def</span> <span class="nf">execute_bm_search</span><span class="p">(</span><span class="n">q</span><span class="p">):</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="p">.</span><span class="nf">argsort</span><span class="p">(</span><span class="n">bm25</span><span class="p">.</span><span class="nf">get_scores</span><span class="p">(</span><span class="n">q</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">)))[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>
+
+<span class="c1"># Function to perform reranking
+</span><span class="k">def</span> <span class="nf">execute_reranking</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+
+    <span class="c1"># Translate query
+</span>    <span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">biencoder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span> <span class="c1">#.cuda()
+</span>
+    <span class="c1"># Get cosine similarity
+</span>    <span class="n">hits</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">semantic_search</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">,</span> <span class="n">corpus_embeddings</span><span class="p">,</span> <span class="n">top_k</span> <span class="o">=</span> <span class="n">topk</span><span class="p">)</span>
+    <span class="n">hits</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Perform reranking
+</span>    <span class="n">cross_inp</span> <span class="o">=</span> <span class="p">[[</span><span class="n">query</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]]]</span> <span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">]</span>
+    <span class="n">cross_scores</span> <span class="o">=</span> <span class="n">crossencoderembeddingmodel</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">cross_inp</span><span class="p">)</span>
+
+    <span class="c1"># Sort results by the cross-encoder scores
+</span>    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">cross_scores</span><span class="p">)):</span>
+
+        <span class="n">hits</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross_scores</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+    <span class="n">sortie</span> <span class="o">=</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">],</span> <span class="n">reverse</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">10</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sortie</span><span class="p">]</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Load the components
+</span><span class="n">query_df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">"</span><span class="s">/kaggle/input/wayfair-wands-dataset/query.csv</span><span class="sh">"</span><span class="p">,</span> <span class="n">sep</span> <span class="o">=</span> <span class="sh">'</span><span class="se">\t</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">product_df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">"</span><span class="s">/kaggle/input/wayfair-wands-dataset/product.csv</span><span class="sh">"</span><span class="p">,</span> <span class="n">sep</span> <span class="o">=</span> <span class="sh">'</span><span class="se">\t</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">label_df</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">"</span><span class="s">/kaggle/input/wayfair-wands-dataset/label.csv</span><span class="sh">"</span><span class="p">,</span> <span class="n">sep</span> <span class="o">=</span> <span class="sh">'</span><span class="se">\t</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Inspect initial dataframes
+</span><span class="n">product_df</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>product_id</th>
+      <th>product_name</th>
+      <th>product_class</th>
+      <th>category hierarchy</th>
+      <th>product_description</th>
+      <th>product_features</th>
+      <th>rating_count</th>
+      <th>average_rating</th>
+      <th>review_count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>solid wood platform bed</td>
+      <td>Beds</td>
+      <td>Furniture / Bedroom Furniture / Beds &amp; Headboa...</td>
+      <td>good , deep sleep can be quite difficult to ha...</td>
+      <td>overallwidth-sidetoside:64.7|dsprimaryproducts...</td>
+      <td>15.0</td>
+      <td>4.5</td>
+      <td>15.0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>all-clad 7 qt . slow cooker</td>
+      <td>Slow Cookers</td>
+      <td>Kitchen &amp; Tabletop / Small Kitchen Appliances ...</td>
+      <td>create delicious slow-cooked meals , from tend...</td>
+      <td>capacityquarts:7|producttype : slow cooker|pro...</td>
+      <td>100.0</td>
+      <td>2.0</td>
+      <td>98.0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>all-clad electrics 6.5 qt . slow cooker</td>
+      <td>Slow Cookers</td>
+      <td>Kitchen &amp; Tabletop / Small Kitchen Appliances ...</td>
+      <td>prepare home-cooked meals on any schedule with...</td>
+      <td>features : keep warm setting|capacityquarts:6....</td>
+      <td>208.0</td>
+      <td>3.0</td>
+      <td>181.0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>all-clad all professional tools pizza cutter</td>
+      <td>Slicers, Peelers And Graters</td>
+      <td>Browse By Brand / All-Clad</td>
+      <td>this original stainless tool was designed to c...</td>
+      <td>overallwidth-sidetoside:3.5|warrantylength : l...</td>
+      <td>69.0</td>
+      <td>4.5</td>
+      <td>42.0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>baldwin prestige alcott passage knob with roun...</td>
+      <td>Door Knobs</td>
+      <td>Home Improvement / Doors &amp; Door Hardware / Doo...</td>
+      <td>the hardware has a rich heritage of delivering...</td>
+      <td>compatibledoorthickness:1.375 '' |countryofori...</td>
+      <td>70.0</td>
+      <td>5.0</td>
+      <td>42.0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">product_df</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(42994, 9)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">query_df</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>query_id</th>
+      <th>query</th>
+      <th>query_class</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>salon chair</td>
+      <td>Massage Chairs</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>smart coffee table</td>
+      <td>Coffee &amp; Cocktail Tables</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>dinosaur</td>
+      <td>Kids Wall Décor</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>turquoise pillows</td>
+      <td>Accent Pillows</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>chair and a half recliner</td>
+      <td>Recliners</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">query_df</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>480
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">label_df</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>query_id</th>
+      <th>product_id</th>
+      <th>label</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0</td>
+      <td>25434</td>
+      <td>Exact</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>0</td>
+      <td>12088</td>
+      <td>Irrelevant</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>0</td>
+      <td>42931</td>
+      <td>Exact</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>0</td>
+      <td>2636</td>
+      <td>Exact</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>0</td>
+      <td>42923</td>
+      <td>Exact</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">product_df</span><span class="p">.</span><span class="nf">isnull</span><span class="p">().</span><span class="nf">sum</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>product_id                0
+product_name              0
+product_class          2852
+category hierarchy     1556
+product_description    6008
+product_features          0
+rating_count           9452
+average_rating         9452
+review_count           9452
+dtype: int64
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Combine fields and process text
+</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">product_name</span><span class="sh">'</span><span class="p">]</span> <span class="o">+</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span> <span class="o">+</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">product_description</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="sh">''</span><span class="p">)</span>
+<span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">.</span><span class="nf">translate</span><span class="p">(</span><span class="nb">str</span><span class="p">.</span><span class="nf">maketrans</span><span class="p">(</span><span class="sh">''</span><span class="p">,</span> <span class="sh">''</span><span class="p">,</span> <span class="n">string</span><span class="p">.</span><span class="n">punctuation</span><span class="p">)))</span>
+<span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">re</span><span class="p">.</span><span class="nf">sub</span><span class="p">(</span><span class="sh">'</span><span class="s">\d+</span><span class="sh">'</span><span class="p">,</span> <span class="sh">''</span><span class="p">,</span> <span class="n">x</span><span class="p">).</span><span class="nf">lower</span><span class="p">().</span><span class="nf">strip</span><span class="p">().</span><span class="nf">replace</span><span class="p">(</span><span class="sh">'</span><span class="s">  </span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="tf-idf-">TF-IDF <a class="anchor" id="tfidf"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Calculate TF-IDF
+</span><span class="n">vec</span> <span class="o">=</span> <span class="nc">TfidfVectorizer</span><span class="p">()</span>
+<span class="n">tfidf</span> <span class="o">=</span> <span class="n">vec</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">matrix</span> <span class="o">=</span> <span class="n">tfidf</span><span class="p">.</span><span class="nf">transform</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">])</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Use the product ledger to calculate exact matches for each suggestion
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query_id</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="n">get_exact_matches_for_</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Use TF-IDF to calculate cosine similarity and return similar entries
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">suggestions</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="n">get_tfidf_products</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Calclate Mean Average Precision MAPE
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">suggestions</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="bm25-">BM25 <a class="anchor" id="bm"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init model
+</span><span class="n">bm25</span> <span class="o">=</span> <span class="nc">BM25Okapi</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">)))</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Add BM result to data
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_suggestions</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="n">execute_bm_search</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Score BM25
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_suggestions</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="embeddings-">Embeddings <a class="anchor" id="embeddings"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Prepare an embedding model
+</span><span class="n">queries</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">passages</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">iterrows</span><span class="p">():</span>
+
+    <span class="nb">input</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">query: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span>
+    <span class="n">queries</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">product_df</span><span class="p">.</span><span class="nf">iterrows</span><span class="p">():</span>
+
+    <span class="nb">input</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"</span><span class="s">passage: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span>
+    <span class="n">passages</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+
+<span class="n">input_texts</span> <span class="o">=</span> <span class="n">queries</span> <span class="o">+</span> <span class="n">passages</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init model
+</span><span class="n">embedder</span> <span class="o">=</span> <span class="nc">SentenceTransformer</span><span class="p">(</span><span class="sh">"</span><span class="s">all-MiniLM-L6-v2</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>modules.json:   0%|          | 0.00/349 [00:00&lt;?, ?B/s]
+
+
+
+config_sentence_transformers.json:   0%|          | 0.00/116 [00:00&lt;?, ?B/s]
+
+
+
+README.md:   0%|          | 0.00/10.7k [00:00&lt;?, ?B/s]
+
+
+
+sentence_bert_config.json:   0%|          | 0.00/53.0 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/612 [00:00&lt;?, ?B/s]
+
+
+
+model.safetensors:   0%|          | 0.00/90.9M [00:00&lt;?, ?B/s]
+
+
+
+tokenizer_config.json:   0%|          | 0.00/350 [00:00&lt;?, ?B/s]
+
+
+
+vocab.txt:   0%|          | 0.00/232k [00:00&lt;?, ?B/s]
+
+
+
+tokenizer.json:   0%|          | 0.00/466k [00:00&lt;?, ?B/s]
+
+
+
+special_tokens_map.json:   0%|          | 0.00/112 [00:00&lt;?, ?B/s]
+
+
+
+1_Pooling/config.json:   0%|          | 0.00/190 [00:00&lt;?, ?B/s]
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Apply embeddings to data
+</span><span class="o">%</span><span class="n">time</span> <span class="n">corpus_embeddings</span> <span class="o">=</span> <span class="n">embedder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">passages</span><span class="p">,</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/1344 [00:00&lt;?, ?it/s]
+
+
+CPU times: user 31min 22s, sys: 3min 1s, total: 34min 24s
+Wall time: 17min 8s
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">%</span><span class="n">time</span> <span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">embedder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">queries</span><span class="p">,</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/15 [00:00&lt;?, ?it/s]
+
+
+CPU times: user 3.81 s, sys: 21.2 ms, total: 3.83 s
+Wall time: 1.92 s
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Embed the corpus
+#corpus_embeddings = corpus_embeddings.to("cuda")
+</span><span class="n">corpus_embeddings</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">normalize_embeddings</span><span class="p">(</span><span class="n">corpus_embeddings</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Embed the queries
+#query_embeddings = query_embeddings.to("cuda")
+</span><span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">normalize_embeddings</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Comnpute cosine simi9larities
+</span><span class="n">hits</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">semantic_search</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">,</span> <span class="n">corpus_embeddings</span><span class="p">,</span> <span class="n">score_function</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="n">dot_score</span><span class="p">,</span> <span class="n">top_k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># ECompile semantic similarity back into dataset
+</span><span class="n">sims</span> <span class="o">=</span> <span class="p">[[</span><span class="n">y</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]</span> <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">]</span>
+
+<span class="c1"># Add the scores to the original data
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">semantic_suggestions</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">sims</span>
+
+<span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">semantic_score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">semantic_suggestions</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="re-ranking-">Re-Ranking <a class="anchor" id="reranking"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init models for reranking
+</span><span class="n">biencoder</span> <span class="o">=</span> <span class="nc">SentenceTransformer</span><span class="p">(</span><span class="sh">'</span><span class="s">multi-qa-MiniLM-L6-cos-v1</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">crossencoderembeddingmodel</span> <span class="o">=</span> <span class="nc">CrossEncoder</span><span class="p">(</span><span class="sh">'</span><span class="s">cross-encoder/ms-marco-MiniLM-L-6-v2</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="c1"># Set sequence length
+</span><span class="n">biencoder</span><span class="p">.</span><span class="n">max_seq_length</span> <span class="o">=</span> <span class="mi">512</span>
+
+<span class="c1"># Num docs
+</span><span class="n">topk</span> <span class="o">=</span> <span class="mi">100</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>modules.json:   0%|          | 0.00/349 [00:00&lt;?, ?B/s]
+
+
+
+config_sentence_transformers.json:   0%|          | 0.00/116 [00:00&lt;?, ?B/s]
+
+
+
+README.md:   0%|          | 0.00/11.6k [00:00&lt;?, ?B/s]
+
+
+
+sentence_bert_config.json:   0%|          | 0.00/53.0 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/612 [00:00&lt;?, ?B/s]
+
+
+
+model.safetensors:   0%|          | 0.00/90.9M [00:00&lt;?, ?B/s]
+
+
+
+tokenizer_config.json:   0%|          | 0.00/383 [00:00&lt;?, ?B/s]
+
+
+
+vocab.txt:   0%|          | 0.00/232k [00:00&lt;?, ?B/s]
+
+
+
+tokenizer.json:   0%|          | 0.00/466k [00:00&lt;?, ?B/s]
+
+
+
+special_tokens_map.json:   0%|          | 0.00/112 [00:00&lt;?, ?B/s]
+
+
+
+1_Pooling/config.json:   0%|          | 0.00/190 [00:00&lt;?, ?B/s]
+
+
+
+config.json:   0%|          | 0.00/794 [00:00&lt;?, ?B/s]
+
+
+
+pytorch_model.bin:   0%|          | 0.00/90.9M [00:00&lt;?, ?B/s]
+
+
+/opt/conda/lib/python3.10/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+
+
+
+tokenizer_config.json:   0%|          | 0.00/316 [00:00&lt;?, ?B/s]
+
+
+
+vocab.txt:   0%|          | 0.00/232k [00:00&lt;?, ?B/s]
+
+
+
+special_tokens_map.json:   0%|          | 0.00/112 [00:00&lt;?, ?B/s]
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Perform initial encoding
+</span><span class="n">corpus_embeddings</span> <span class="o">=</span> <span class="n">biencoder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">],</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">show_progress_bar</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+<span class="n">query_embeddings</span> <span class="o">=</span> <span class="n">biencoder</span><span class="p">.</span><span class="nf">encode</span><span class="p">(</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">convert_to_tensor</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">show_progress_bar</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span> <span class="c1">#.cuda()
+</span></code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/1344 [00:00&lt;?, ?it/s]
+
+
+
+Batches:   0%|          | 0/1 [00:00&lt;?, ?it/s]
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Extract 100 relevant passages for each query
+</span><span class="n">hits</span> <span class="o">=</span> <span class="n">util</span><span class="p">.</span><span class="nf">semantic_search</span><span class="p">(</span><span class="n">query_embeddings</span><span class="p">,</span> <span class="n">corpus_embeddings</span><span class="p">,</span> <span class="n">top_k</span> <span class="o">=</span> <span class="n">topk</span><span class="p">)</span>
+<span class="n">hits</span> <span class="o">=</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Inspection Re-Rank the products
+</span><span class="n">cross_inp</span> <span class="o">=</span> <span class="p">[[</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">][</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]]]</span> <span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">]</span>
+<span class="n">cross_scores</span> <span class="o">=</span> <span class="n">crossencoderembeddingmodel</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">cross_inp</span><span class="p">)</span>
+
+<span class="c1"># Sort results by the cross-encoder scores
+</span><span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="nf">len</span><span class="p">(</span><span class="n">cross_scores</span><span class="p">)):</span>
+
+    <span class="n">hits</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">cross_scores</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    
+<span class="c1"># Examine outputs
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Query Selection- </span><span class="si">{</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Top-3 Re-Ranked Hits</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">hits</span> <span class="o">=</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">hits</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">],</span> <span class="n">reverse</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]:</span>
+
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\t</span><span class="s">{:.3f}</span><span class="se">\t</span><span class="s">{}</span><span class="sh">"</span><span class="p">.</span><span class="nf">format</span><span class="p">(</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">],</span> <span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">product_name</span><span class="sh">'</span><span class="p">][</span><span class="n">hit</span><span class="p">[</span><span class="sh">'</span><span class="s">corpus_id</span><span class="sh">'</span><span class="p">]].</span><span class="nf">replace</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s"> </span><span class="sh">"</span><span class="p">)))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Batches:   0%|          | 0/4 [00:00&lt;?, ?it/s]
+
+
+Query Selection- salon chair
+Top-3 Re-Ranked Hits
+	8.191	barberpub salon massage chair
+	8.156	hair salon chair
+	7.957	reclining faux leather massage chair
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">%%</span><span class="n">capture</span>
+
+<span class="c1"># Perform semantic reranking on the data
+</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">reranked</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">query</span><span class="sh">'</span><span class="p">].</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">execute_reranking</span><span class="p">(</span><span class="n">product_df</span><span class="p">[</span><span class="sh">'</span><span class="s">text</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">reranking_score</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">query_df</span><span class="p">.</span><span class="nf">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nf">map_at_k</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">matches</span><span class="sh">'</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="sh">'</span><span class="s">reranked</span><span class="sh">'</span><span class="p">],</span> <span class="n">k</span> <span class="o">=</span> <span class="mi">10</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>
+
+<hr />
+
+<h1 id="evaluation-">Evaluation <a class="anchor" id="eval"></a></h1>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="sh">'</span><span class="s">Semantic Scoring Results- MAPE scores</span><span class="sh">'</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">TF-IDF on the Queries was </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">query_df</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="si">:</span><span class="p">,</span> <span class="sh">'</span><span class="s">score</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">BM25 on the Queries was </span><span class="si">{</span><span class="nf">round</span><span class="p">(</span><span class="n">np</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">query_df</span><span class="p">[</span><span class="sh">'</span><span class="s">bm_score</span><span class="sh">'</span><span class="p">]),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Cosine similarity of the embeddings on the Queries was </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">query_df</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="si">:</span><span class="p">,</span> <span class="sh">'</span><span class="s">semantic_score</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Semantic ReRanking on the Queries was </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">query_df</span><span class="p">.</span><span class="n">loc</span><span class="p">[</span><span class="si">:</span><span class="p">,</span> <span class="sh">'</span><span class="s">reranking_score</span><span class="sh">'</span><span class="p">].</span><span class="nf">mean</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Semantic Scoring Results- MAPE scores
+TF-IDF on the Queries was 0.272
+BM25 on the Queries was 0.261
+Cosine similarity of the embeddings on the Queries was 0.323
+Semantic ReRanking on the Queries was 0.437
+</code></pre></div></div>
+
+<p><a href="#top">Back to top..</a></p>]]></content><author><name></name></author><summary type="html"><![CDATA[Semantic Search In this exercise, we will use various techniques to assess search relevance by testing “Mean Absolute Percent Error” (MAPE) of our algorithms and their ability to retrieve relevant products based on various search queries. The techniques we will use include: -TF-IDF -BM25 -Sentence Embeddings -Semantic ReRanking -Evaluation # Install the required packages into the environment !pip install rank-bm25 sentence-transformers torch transformers Collecting rank-bm25 Downloading rank_bm25-0.2.2-py3-none-any.whl.metadata (3.2 kB) Collecting sentence-transformers Downloading sentence_transformers-2.7.0-py3-none-any.whl.metadata (11 kB) Requirement already satisfied: torch in /opt/conda/lib/python3.10/site-packages (2.1.2+cpu) Requirement already satisfied: transformers in /opt/conda/lib/python3.10/site-packages (4.39.3) Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from rank-bm25) (1.26.4) Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (4.66.1) Requirement already satisfied: scikit-learn in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.2.2) Requirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (1.11.4) Requirement already satisfied: huggingface-hub&gt;=0.15.1 in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (0.22.2) Requirement already satisfied: Pillow in /opt/conda/lib/python3.10/site-packages (from sentence-transformers) (9.5.0) Requirement already satisfied: filelock in /opt/conda/lib/python3.10/site-packages (from torch) (3.13.1) Requirement already satisfied: typing-extensions in /opt/conda/lib/python3.10/site-packages (from torch) (4.9.0) Requirement already satisfied: sympy in /opt/conda/lib/python3.10/site-packages (from torch) (1.12) Requirement already satisfied: networkx in /opt/conda/lib/python3.10/site-packages (from torch) (3.2.1) Requirement already satisfied: jinja2 in /opt/conda/lib/python3.10/site-packages (from torch) (3.1.2) Requirement already satisfied: fsspec in /opt/conda/lib/python3.10/site-packages (from torch) (2024.2.0) Requirement already satisfied: packaging&gt;=20.0 in /opt/conda/lib/python3.10/site-packages (from transformers) (21.3) Requirement already satisfied: pyyaml&gt;=5.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (6.0.1) Requirement already satisfied: regex!=2019.12.17 in /opt/conda/lib/python3.10/site-packages (from transformers) (2023.12.25) Requirement already satisfied: requests in /opt/conda/lib/python3.10/site-packages (from transformers) (2.31.0) Requirement already satisfied: tokenizers&lt;0.19,&gt;=0.14 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.15.2) Requirement already satisfied: safetensors&gt;=0.4.1 in /opt/conda/lib/python3.10/site-packages (from transformers) (0.4.3) Requirement already satisfied: pyparsing!=3.0.5,&gt;=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging&gt;=20.0-&gt;transformers) (3.1.1) Requirement already satisfied: MarkupSafe&gt;=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2-&gt;torch) (2.1.3) Requirement already satisfied: charset-normalizer&lt;4,&gt;=2 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.3.2) Requirement already satisfied: idna&lt;4,&gt;=2.5 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (3.6) Requirement already satisfied: urllib3&lt;3,&gt;=1.21.1 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (1.26.18) Requirement already satisfied: certifi&gt;=2017.4.17 in /opt/conda/lib/python3.10/site-packages (from requests-&gt;transformers) (2024.2.2) Requirement already satisfied: joblib&gt;=1.1.1 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (1.4.0) Requirement already satisfied: threadpoolctl&gt;=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn-&gt;sentence-transformers) (3.2.0) Requirement already satisfied: mpmath&gt;=0.19 in /opt/conda/lib/python3.10/site-packages (from sympy-&gt;torch) (1.3.0) Downloading rank_bm25-0.2.2-py3-none-any.whl (8.6 kB) Downloading sentence_transformers-2.7.0-py3-none-any.whl (171 kB) [2K [90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m171.5/171.5 kB[0m [31m1.4 MB/s[0m eta [36m0:00:00[0m [?25hInstalling collected packages: rank-bm25, sentence-transformers Successfully installed rank-bm25-0.2.2 sentence-transformers-2.7.0 # Import libraries import numpy as np import pandas as pd import os from sklearn.feature_extraction.text import TfidfVectorizer from sklearn.metrics.pairwise import cosine_similarity import string import re from rank_bm25 import BM25Okapi from sentence_transformers import SentenceTransformer, CrossEncoder, util import torch.nn.functional as F from torch import Tensor from transformers import AutoTokenizer, AutoModel # Check data files for dirname, _, filenames in os.walk('/kaggle/input'): for filename in filenames: print(os.path.join(dirname, filename)) /kaggle/input/wayfair-wands-dataset/query.csv /kaggle/input/wayfair-wands-dataset/product.csv /kaggle/input/wayfair-wands-dataset/label.csv # Compile functions for later implementation def average_pool(last_hidden_states: Tensor, attention_mask: Tensor) -&gt; Tensor: last_hidden = last_hidden_states.masked_fill(~attention_mask[..., None].bool(), 0.0) return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None] # Function to lookup query matches def get_exact_matches_for_(query): labels = label_df[label_df['query_id'] == query] return labels[labels['label'] == 'Exact']['product_id'].values # Function to get tf-idf results def get_tfidf_products(x): return cosine_similarity(vec.transform([x]), matrix).flatten().argsort()[-10:][::-1] #define functions for evaluating retrieval performance def map_at_k(true_ids, predicted_ids, k = 10): """ Calculate the Mean Average Precision at K (MAP@K). Parameters: true_ids (list): List of relevant product IDs. predicted_ids (list): List of predicted product IDs. k (int): Number of top elements to consider. NOTE: IF you wish to change top k, please provide a justification for choosing the new value Returns: float: MAP@K score. """ #if either list is empty, return 0 if not len(true_ids) or not len(predicted_ids): return 0.0 score = 0.0 num_hits = 0.0 # Calculate score for i, p_id in enumerate(predicted_ids[:k]): if p_id in true_ids and p_id not in predicted_ids[:i]: num_hits += 1.0 score += num_hits / (i + 1.0) # Return MAPE return score / min(len(true_ids), k) # Function to execute bm search def execute_bm_search(q): return np.argsort(bm25.get_scores(q.split(' ')))[-10:] # Function to perform reranking def execute_reranking(data, query): # Translate query query_embeddings = biencoder.encode(query, convert_to_tensor = True) #.cuda() # Get cosine similarity hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Perform reranking cross_inp = [[query, data[hit['corpus_id']]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx]['score'] = cross_scores[idx] sortie = sorted(hits, key = lambda x: x['score'], reverse = True)[0:10] return [item['corpus_id'] for item in sortie] # Load the components query_df = pd.read_csv("/kaggle/input/wayfair-wands-dataset/query.csv", sep = '\t') product_df = pd.read_csv("/kaggle/input/wayfair-wands-dataset/product.csv", sep = '\t') label_df = pd.read_csv("/kaggle/input/wayfair-wands-dataset/label.csv", sep = '\t') # Inspect initial dataframes product_df.head() product_id product_name product_class category hierarchy product_description product_features rating_count average_rating review_count 0 0 solid wood platform bed Beds Furniture / Bedroom Furniture / Beds &amp; Headboa... good , deep sleep can be quite difficult to ha... overallwidth-sidetoside:64.7|dsprimaryproducts... 15.0 4.5 15.0 1 1 all-clad 7 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... create delicious slow-cooked meals , from tend... capacityquarts:7|producttype : slow cooker|pro... 100.0 2.0 98.0 2 2 all-clad electrics 6.5 qt . slow cooker Slow Cookers Kitchen &amp; Tabletop / Small Kitchen Appliances ... prepare home-cooked meals on any schedule with... features : keep warm setting|capacityquarts:6.... 208.0 3.0 181.0 3 3 all-clad all professional tools pizza cutter Slicers, Peelers And Graters Browse By Brand / All-Clad this original stainless tool was designed to c... overallwidth-sidetoside:3.5|warrantylength : l... 69.0 4.5 42.0 4 4 baldwin prestige alcott passage knob with roun... Door Knobs Home Improvement / Doors &amp; Door Hardware / Doo... the hardware has a rich heritage of delivering... compatibledoorthickness:1.375 '' |countryofori... 70.0 5.0 42.0 product_df.shape (42994, 9) query_df.head() query_id query query_class 0 0 salon chair Massage Chairs 1 1 smart coffee table Coffee &amp; Cocktail Tables 2 2 dinosaur Kids Wall Décor 3 3 turquoise pillows Accent Pillows 4 4 chair and a half recliner Recliners query_df.shape[0] 480 label_df.head() id query_id product_id label 0 0 0 25434 Exact 1 1 0 12088 Irrelevant 2 2 0 42931 Exact 3 3 0 2636 Exact 4 4 0 42923 Exact product_df.isnull().sum() product_id 0 product_name 0 product_class 2852 category hierarchy 1556 product_description 6008 product_features 0 rating_count 9452 average_rating 9452 review_count 9452 dtype: int64 # Combine fields and process text product_df['text'] = product_df['product_name'] + ' ' + product_df['product_description'].fillna('') product_df['text'] = product_df['text'].apply(lambda x: x.translate(str.maketrans('', '', string.punctuation))) product_df['text'] = product_df['text'].apply(lambda x: re.sub('\d+', '', x).lower().strip().replace(' ', ' ')) Back to top.. TF-IDF # Calculate TF-IDF vec = TfidfVectorizer() tfidf = vec.fit(product_df['text']) matrix = tfidf.transform(product_df['text']) # Use the product ledger to calculate exact matches for each suggestion query_df['matches'] = query_df['query_id'].apply(get_exact_matches_for_) # Use TF-IDF to calculate cosine similarity and return similar entries query_df['suggestions'] = query_df['query'].apply(get_tfidf_products) # Calclate Mean Average Precision MAPE query_df['score'] = query_df.apply(lambda x: map_at_k(x['matches'], x['suggestions'], k = 10), axis = 1) Back to top.. BM25 # Init model bm25 = BM25Okapi(product_df['text'].apply(lambda x: x.split(' '))) # Add BM result to data query_df['bm_suggestions'] = query_df['query'].apply(execute_bm_search) # Score BM25 query_df['bm_score'] = query_df.apply(lambda x: map_at_k(x['matches'], x['bm_suggestions'], k = 10), axis = 1) Back to top.. Embeddings # Prepare an embedding model queries = [] passages = [] for idx, row in query_df.iterrows(): input = f"query: {row['query']}" queries.append(input) for idx, row in product_df.iterrows(): input = f"passage: {row['text']}" passages.append(input) input_texts = queries + passages # Init model embedder = SentenceTransformer("all-MiniLM-L6-v2") modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/10.7k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/350 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] # Apply embeddings to data %time corpus_embeddings = embedder.encode(passages, convert_to_tensor = True) Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] CPU times: user 31min 22s, sys: 3min 1s, total: 34min 24s Wall time: 17min 8s %time query_embeddings = embedder.encode(queries, convert_to_tensor = True) Batches: 0%| | 0/15 [00:00&lt;?, ?it/s] CPU times: user 3.81 s, sys: 21.2 ms, total: 3.83 s Wall time: 1.92 s # Embed the corpus #corpus_embeddings = corpus_embeddings.to("cuda") corpus_embeddings = util.normalize_embeddings(corpus_embeddings) # Embed the queries #query_embeddings = query_embeddings.to("cuda") query_embeddings = util.normalize_embeddings(query_embeddings) # Comnpute cosine simi9larities hits = util.semantic_search(query_embeddings, corpus_embeddings, score_function = util.dot_score, top_k = 10) # ECompile semantic similarity back into dataset sims = [[y['corpus_id'] for y in x] for x in hits] # Add the scores to the original data query_df['semantic_suggestions'] = sims query_df['semantic_score'] = query_df.apply(lambda x: map_at_k(x['matches'], x['semantic_suggestions'], k = 10), axis = 1) Back to top.. Re-Ranking # Init models for reranking biencoder = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1') crossencoderembeddingmodel = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2') # Set sequence length biencoder.max_seq_length = 512 # Num docs topk = 100 modules.json: 0%| | 0.00/349 [00:00&lt;?, ?B/s] config_sentence_transformers.json: 0%| | 0.00/116 [00:00&lt;?, ?B/s] README.md: 0%| | 0.00/11.6k [00:00&lt;?, ?B/s] sentence_bert_config.json: 0%| | 0.00/53.0 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/612 [00:00&lt;?, ?B/s] model.safetensors: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] tokenizer_config.json: 0%| | 0.00/383 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] tokenizer.json: 0%| | 0.00/466k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] 1_Pooling/config.json: 0%| | 0.00/190 [00:00&lt;?, ?B/s] config.json: 0%| | 0.00/794 [00:00&lt;?, ?B/s] pytorch_model.bin: 0%| | 0.00/90.9M [00:00&lt;?, ?B/s] /opt/conda/lib/python3.10/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly. To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage() return self.fget.__get__(instance, owner)() tokenizer_config.json: 0%| | 0.00/316 [00:00&lt;?, ?B/s] vocab.txt: 0%| | 0.00/232k [00:00&lt;?, ?B/s] special_tokens_map.json: 0%| | 0.00/112 [00:00&lt;?, ?B/s] # Perform initial encoding corpus_embeddings = biencoder.encode(product_df['text'], convert_to_tensor = True, show_progress_bar = True) query_embeddings = biencoder.encode(query_df['query'].iloc[0], convert_to_tensor = True, show_progress_bar = True) #.cuda() Batches: 0%| | 0/1344 [00:00&lt;?, ?it/s] Batches: 0%| | 0/1 [00:00&lt;?, ?it/s] # Extract 100 relevant passages for each query hits = util.semantic_search(query_embeddings, corpus_embeddings, top_k = topk) hits = hits[0] # Inspection Re-Rank the products cross_inp = [[query_df['query'].iloc[0], product_df['text'][hit['corpus_id']]] for hit in hits] cross_scores = crossencoderembeddingmodel.predict(cross_inp) # Sort results by the cross-encoder scores for idx in range(len(cross_scores)): hits[idx]['score'] = cross_scores[idx] # Examine outputs print(f"Query Selection- {query_df['query'].iloc[0]}") print("Top-3 Re-Ranked Hits") hits = sorted(hits, key = lambda x: x['score'], reverse = True) for hit in hits[0:3]: print("\t{:.3f}\t{}".format(hit['score'], product_df['product_name'][hit['corpus_id']].replace("\n", " "))) Batches: 0%| | 0/4 [00:00&lt;?, ?it/s] Query Selection- salon chair Top-3 Re-Ranked Hits 8.191 barberpub salon massage chair 8.156 hair salon chair 7.957 reclining faux leather massage chair %%capture # Perform semantic reranking on the data query_df['reranked'] = query_df['query'].apply(lambda x: execute_reranking(product_df['text'], x)) query_df['reranking_score'] = query_df.apply(lambda x: map_at_k(x['matches'], x['reranked'], k = 10), axis = 1) Back to top.. Evaluation print('Semantic Scoring Results- MAPE scores') print(f"TF-IDF on the Queries was {round(query_df.loc[:, 'score'].mean(), 3)}") print(f"BM25 on the Queries was {round(np.mean(query_df['bm_score']), 3)}") print(f"Cosine similarity of the embeddings on the Queries was {round(query_df.loc[:, 'semantic_score'].mean(), 3)}") print(f"Semantic ReRanking on the Queries was {round(query_df.loc[:, 'reranking_score'].mean(), 3)}") Semantic Scoring Results- MAPE scores TF-IDF on the Queries was 0.272 BM25 on the Queries was 0.261 Cosine similarity of the embeddings on the Queries was 0.323 Semantic ReRanking on the Queries was 0.437 Back to top..]]></summary></entry><entry><title type="html">Time-Series Forecasting</title><link href="http://localhost:4000/2024/12/05/prophet-store-sales-forecasting.html" rel="alternate" type="text/html" title="Time-Series Forecasting" /><published>2024-12-05T00:00:00-05:00</published><updated>2024-12-05T00:00:00-05:00</updated><id>http://localhost:4000/2024/12/05/prophet-store-sales-forecasting</id><content type="html" xml:base="http://localhost:4000/2024/12/05/prophet-store-sales-forecasting.html"><![CDATA[<h1 id="forecasting-at-scale-time-series-with-prophet">Forecasting at Scale: Time-Series with Prophet</h1>
+
+<p>In this exercise we will use parallel computing to implement prophet models for each product in the data and conduct forecasting to submit to kaggle for evaluation</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Import libraries
+</span><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="n">multiprocessing</span> <span class="kn">import</span> <span class="n">Pool</span><span class="p">,</span> <span class="n">cpu_count</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">warnings</span>
+<span class="n">warnings</span><span class="p">.</span><span class="nf">filterwarnings</span><span class="p">(</span><span class="sh">'</span><span class="s">ignore</span><span class="sh">'</span><span class="p">)</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+<span class="kn">import</span> <span class="n">zipfile</span>
+<span class="kn">import</span> <span class="n">itertools</span>
+<span class="kn">from</span> <span class="n">prophet</span> <span class="kn">import</span> <span class="n">Prophet</span>
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">import</span> <span class="n">sys</span>
+<span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">import</span> <span class="n">random</span> 
+
+<span class="c1"># List contents
+</span><span class="k">for</span> <span class="n">dirname</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">filenames</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">walk</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input</span><span class="sh">'</span><span class="p">):</span>
+    
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+        
+        <span class="nf">print</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/kaggle/input/store-sales-time-series-forecasting/oil.csv
+/kaggle/input/store-sales-time-series-forecasting/sample_submission.csv
+/kaggle/input/store-sales-time-series-forecasting/holidays_events.csv
+/kaggle/input/store-sales-time-series-forecasting/stores.csv
+/kaggle/input/store-sales-time-series-forecasting/train.csv
+/kaggle/input/store-sales-time-series-forecasting/test.csv
+/kaggle/input/store-sales-time-series-forecasting/transactions.csv
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Load data
+</span><span class="n">train</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/train.csv</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/test.csv</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">holidays</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/holidays_events.csv</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">description</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">oil</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/oil.csv</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">dcoilwtico</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Inspect data
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Unique Item Families:    </span><span class="si">{</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">family</span><span class="sh">'</span><span class="p">].</span><span class="nf">nunique</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span> 
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s"># Stores:                </span><span class="si">{</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">store_nbr</span><span class="sh">'</span><span class="p">].</span><span class="nf">nunique</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Dataset start date:      </span><span class="si">{</span><span class="nf">min</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Dataset end date:        </span><span class="si">{</span><span class="nf">max</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test set start date:     </span><span class="si">{</span><span class="nf">min</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test set end date:       </span><span class="si">{</span><span class="nf">max</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">interval</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">date_range</span><span class="p">(</span><span class="nf">min</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">]),</span> <span class="nf">max</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">]),</span> <span class="n">freq</span> <span class="o">=</span> <span class="sh">'</span><span class="s">d</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Num Days:               </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Train Shape:            </span><span class="si">{</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">].</span><span class="nf">nunique</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Unique Item Families:    33
+# Stores:                54
+Dataset start date:      2013-01-01
+Dataset end date:        2017-08-15
+Test set start date:     2017-08-16
+Test set end date:       2017-08-31
+Num Days:               1688
+Train Shape:            1684
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">oil</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2013-01-01</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2013-01-02</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2013-01-03</td>
+      <td>92.97</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2013-01-04</td>
+      <td>93.12</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2013-01-07</td>
+      <td>93.20</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Fix dates
+</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">oil</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">oil</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+
+<span class="c1"># Create a master label for training 
+</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">store_nbr</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="sh">'</span><span class="s">_</span><span class="sh">'</span> <span class="o">+</span> <span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">family</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">store_nbr</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="sh">'</span><span class="s">_</span><span class="sh">'</span> <span class="o">+</span> <span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">family</span><span class="sh">'</span><span class="p">]</span>
+
+<span class="c1"># Merge data
+</span><span class="n">test1</span> <span class="o">=</span> <span class="n">test</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">train1</span> <span class="o">=</span> <span class="n">train</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(28512, 7)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test1</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(28512, 7)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test1</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+      <th>item</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3000888</td>
+      <td>1</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>1_AUTOMOTIVE</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>3000889</td>
+      <td>1</td>
+      <td>BABY CARE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>1_BABY CARE</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3000890</td>
+      <td>1</td>
+      <td>BEAUTY</td>
+      <td>2</td>
+      <td>2017-08-16</td>
+      <td>1_BEAUTY</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3000891</td>
+      <td>1</td>
+      <td>BEVERAGES</td>
+      <td>20</td>
+      <td>2017-08-16</td>
+      <td>1_BEVERAGES</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3000892</td>
+      <td>1</td>
+      <td>BOOKS</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>1_BOOKS</td>
+      <td>46.8</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">train1</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>sales</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+      <th>item</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>1</td>
+      <td>AUTOMOTIVE</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_AUTOMOTIVE</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>1</td>
+      <td>BABY CARE</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BABY CARE</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>1</td>
+      <td>BEAUTY</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BEAUTY</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>1</td>
+      <td>BEVERAGES</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BEVERAGES</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>1</td>
+      <td>BOOKS</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BOOKS</td>
+      <td>93.14</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Create an index for each product
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">train1</span><span class="p">.</span><span class="nf">pivot</span><span class="p">(</span><span class="n">index</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">).</span><span class="nf">reset_index</span><span class="p">()</span> <span class="c1">#.rename({'date': 'ds'}, axis = 1)
+</span><span class="n">promos</span> <span class="o">=</span> <span class="n">train1</span><span class="p">.</span><span class="nf">pivot</span><span class="p">(</span><span class="n">index</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">).</span><span class="nf">reset_index</span><span class="p">()</span> <span class="c1">#.rename({'date': 'ds'}, axis = 1)
+</span><span class="n">test_promos</span> <span class="o">=</span> <span class="n">test1</span><span class="p">.</span><span class="nf">pivot</span><span class="p">(</span><span class="n">index</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">).</span><span class="nf">reset_index</span><span class="p">()</span> <span class="c1">#.rename({'date': 'ds'}, axis = 1)
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Instantiate processing power for parallelism
+</span><span class="n">num_cpus</span> <span class="o">=</span> <span class="nf">cpu_count</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Get an index of all products
+</span><span class="n">items</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="n">columns</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!kaggle competitions submit -c store-sales-time-series-forecasting -f submission.csv -m "prophet_forecasting_at_scale"
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test</span><span class="p">.</span><span class="nf">isnull</span><span class="p">().</span><span class="nf">sum</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>id             0
+date           0
+store_nbr      0
+family         0
+onpromotion    0
+ds             0
+item           0
+dtype: int64
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="nc">Prophet</span><span class="p">(</span><span class="n">holidays</span> <span class="o">=</span> <span class="n">holidays</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">]])</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">)</span> <span class="c1">#, standardize = False)
+</span><span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span> <span class="p">)</span><span class="c1">#, standardize = False)
+</span></code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;prophet.forecaster.Prophet at 0x7c37f7ace770&gt;
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Compile data
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="c1"># cONVERT DATES
+</span><span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+
+<span class="c1"># Add regressors
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]]]).</span><span class="nf">rename</span><span class="p">({</span><span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">trainingdata</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>y</th>
+      <th>onpromotion</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2013-01-01</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2013-01-02</td>
+      <td>3.0</td>
+      <td>0</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2013-01-03</td>
+      <td>2.0</td>
+      <td>0</td>
+      <td>92.97</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2013-01-04</td>
+      <td>2.0</td>
+      <td>0</td>
+      <td>93.12</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2013-01-05</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>93.20</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>14:13:49 - cmdstanpy - INFO - Chain [1] start processing
+14:13:50 - cmdstanpy - INFO - Chain [1] done processing
+
+
+
+
+
+&lt;prophet.forecaster.Prophet at 0x7c37f7ace770&gt;
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fut</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">make_future_dataframe</span><span class="p">(</span><span class="n">periods</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">merge_content</span> <span class="o">=</span> <span class="n">test_promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">fut</span> <span class="o">=</span> <span class="n">fut</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">merge_content</span><span class="p">)</span>
+<span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fut</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>onpromotion</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2017-08-16</td>
+      <td>0</td>
+      <td>46.80</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2017-08-17</td>
+      <td>0</td>
+      <td>47.07</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2017-08-18</td>
+      <td>0</td>
+      <td>48.59</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2017-08-19</td>
+      <td>0</td>
+      <td>47.39</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2017-08-20</td>
+      <td>0</td>
+      <td>47.39</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2017-08-21</td>
+      <td>0</td>
+      <td>47.39</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2017-08-22</td>
+      <td>0</td>
+      <td>47.65</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2017-08-23</td>
+      <td>0</td>
+      <td>48.45</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2017-08-24</td>
+      <td>0</td>
+      <td>47.24</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2017-08-25</td>
+      <td>0</td>
+      <td>47.65</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2017-08-26</td>
+      <td>0</td>
+      <td>46.40</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2017-08-27</td>
+      <td>0</td>
+      <td>46.40</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>2017-08-28</td>
+      <td>0</td>
+      <td>46.40</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2017-08-29</td>
+      <td>0</td>
+      <td>46.46</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>2017-08-30</td>
+      <td>2</td>
+      <td>45.96</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>2017-08-31</td>
+      <td>0</td>
+      <td>47.26</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">fut</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">preds</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">]]</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>onpromotion</th>
+      <th>oil</th>
+      <th>yhat</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2017-08-16</td>
+      <td>0.000000</td>
+      <td>-0.095392</td>
+      <td>1.749961</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2017-08-17</td>
+      <td>0.000000</td>
+      <td>-0.094169</td>
+      <td>1.512343</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2017-08-18</td>
+      <td>0.000000</td>
+      <td>-0.087285</td>
+      <td>1.776728</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2017-08-19</td>
+      <td>0.000000</td>
+      <td>-0.092720</td>
+      <td>2.870283</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2017-08-20</td>
+      <td>0.000000</td>
+      <td>-0.092720</td>
+      <td>3.268697</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2017-08-21</td>
+      <td>0.000000</td>
+      <td>-0.092720</td>
+      <td>2.059172</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2017-08-22</td>
+      <td>0.000000</td>
+      <td>-0.091543</td>
+      <td>2.067662</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2017-08-23</td>
+      <td>0.000000</td>
+      <td>-0.087919</td>
+      <td>2.086430</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2017-08-24</td>
+      <td>0.000000</td>
+      <td>-0.093400</td>
+      <td>0.411933</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2017-08-25</td>
+      <td>0.000000</td>
+      <td>-0.091543</td>
+      <td>2.089462</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2017-08-26</td>
+      <td>0.000000</td>
+      <td>-0.097204</td>
+      <td>3.169663</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2017-08-27</td>
+      <td>0.000000</td>
+      <td>-0.097204</td>
+      <td>3.550008</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>2017-08-28</td>
+      <td>0.000000</td>
+      <td>-0.097204</td>
+      <td>2.317490</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2017-08-29</td>
+      <td>0.000000</td>
+      <td>-0.096932</td>
+      <td>2.297301</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>2017-08-30</td>
+      <td>7.158534</td>
+      <td>-0.099197</td>
+      <td>9.436443</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>2017-08-31</td>
+      <td>0.000000</td>
+      <td>-0.093309</td>
+      <td>2.004886</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]].</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">out</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>33</th>
+      <td>3000921</td>
+      <td>2017-08-16</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+    </tr>
+    <tr>
+      <th>1815</th>
+      <td>3002703</td>
+      <td>2017-08-17</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-17</td>
+    </tr>
+    <tr>
+      <th>3597</th>
+      <td>3004485</td>
+      <td>2017-08-18</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-18</td>
+    </tr>
+    <tr>
+      <th>5379</th>
+      <td>3006267</td>
+      <td>2017-08-19</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-19</td>
+    </tr>
+    <tr>
+      <th>7161</th>
+      <td>3008049</td>
+      <td>2017-08-20</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-20</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span><span class="p">.</span><span class="nf">tail</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>19635</th>
+      <td>3020523</td>
+      <td>2017-08-27</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-27</td>
+    </tr>
+    <tr>
+      <th>21417</th>
+      <td>3022305</td>
+      <td>2017-08-28</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-28</td>
+    </tr>
+    <tr>
+      <th>23199</th>
+      <td>3024087</td>
+      <td>2017-08-29</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-29</td>
+    </tr>
+    <tr>
+      <th>24981</th>
+      <td>3025869</td>
+      <td>2017-08-30</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>2</td>
+      <td>2017-08-30</td>
+    </tr>
+    <tr>
+      <th>26763</th>
+      <td>3027651</td>
+      <td>2017-08-31</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-31</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># cONVERT DATES
+</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Create a function to perform modeling
+</span><span class="k">def</span> <span class="nf">prophet_model</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    
+    <span class="c1"># Init model
+</span>    <span class="n">model</span> <span class="o">=</span> <span class="nc">Prophet</span><span class="p">(</span><span class="n">holidays</span> <span class="o">=</span> <span class="n">holidays</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">]])</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">)</span> <span class="c1">#, standardize = False)
+</span>    <span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span> <span class="p">)</span><span class="c1">#, standardize = False)
+</span>
+    <span class="c1"># Compile data
+</span>    <span class="n">trainingdata</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">item</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">item</span><span class="p">:</span> <span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># Add regressors
+</span>    <span class="n">trainingdata</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">item</span><span class="p">]],</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="n">item</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="c1"># Train
+</span>    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">)</span>
+    
+    <span class="c1"># Init predictions
+</span>    <span class="n">fut</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">make_future_dataframe</span><span class="p">(</span><span class="n">periods</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="n">merge_content</span> <span class="o">=</span> <span class="n">test_promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">item</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">item</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">fut</span> <span class="o">=</span> <span class="n">fut</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">merge_content</span><span class="p">)</span>
+    <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="c1"># Model
+</span>    <span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">fut</span><span class="p">)[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">]]</span> 
+    <span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+    
+    <span class="c1"># Output
+</span>    <span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">item</span><span class="p">].</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>    
+    
+    <span class="k">return</span> <span class="n">out</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="c1">#.drop(['ds', 'oil', 'onpromotion'], axis = 1)
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>'34_LADIESWEAR'
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">prophet_model</span><span class="p">(</span><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">items</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>14:13:51 - cmdstanpy - INFO - Chain [1] start processing
+14:13:51 - cmdstanpy - INFO - Chain [1] done processing
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+      <th>sales</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3001581</td>
+      <td>2017-08-16</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>6.083554</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>3003363</td>
+      <td>2017-08-17</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-17</td>
+      <td>6.022175</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3005145</td>
+      <td>2017-08-18</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-18</td>
+      <td>6.568839</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3006927</td>
+      <td>2017-08-19</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-19</td>
+      <td>7.950376</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3008709</td>
+      <td>2017-08-20</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-20</td>
+      <td>8.325301</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>3010491</td>
+      <td>2017-08-21</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-21</td>
+      <td>6.421023</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>3012273</td>
+      <td>2017-08-22</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-22</td>
+      <td>6.901322</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>3014055</td>
+      <td>2017-08-23</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-23</td>
+      <td>6.409948</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>3015837</td>
+      <td>2017-08-24</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-24</td>
+      <td>5.036301</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>3017619</td>
+      <td>2017-08-25</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-25</td>
+      <td>6.838067</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>3019401</td>
+      <td>2017-08-26</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-26</td>
+      <td>8.204809</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>3021183</td>
+      <td>2017-08-27</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-27</td>
+      <td>8.558502</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>3022965</td>
+      <td>2017-08-28</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-28</td>
+      <td>6.625649</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>3024747</td>
+      <td>2017-08-29</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-29</td>
+      <td>7.066330</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>3026529</td>
+      <td>2017-08-30</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-30</td>
+      <td>6.506890</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>3028311</td>
+      <td>2017-08-31</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-31</td>
+      <td>6.418256</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Forecast
+#start = time.time()
+</span>
+<span class="c1"># Disable outputs
+#logging.getLogger("cmdstanpy").disabled = True 
+</span>
+<span class="c1"># Parallelization
+#p = Pool(num_cpus)
+#result = p.map(prophet_model, items)
+</span>
+<span class="c1">#end = time.time()
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#print(f'Elapsed Modeling Time:  {round((start - end) / 60, 2)} minutes..')
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Compile output
+#res = pd.concat([i for i in result])
+#out = res[['id', 'sales']]
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#out.shape
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(28512, 7)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Write file
+</span><span class="n">out</span><span class="p">.</span><span class="nf">to_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">submission.csv</span><span class="sh">'</span><span class="p">,</span> <span class="n">index</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Visualize outputs
+</span><span class="n">sample</span> <span class="o">=</span> <span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">sample</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>'29_PET SUPPLIES'
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init model
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">Prophet</span><span class="p">(</span><span class="n">holidays</span> <span class="o">=</span> <span class="n">holidays</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">]])</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">)</span> <span class="c1">#, standardize = False)
+</span><span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span> <span class="p">)</span><span class="c1">#, standardize = False)
+</span>
+<span class="c1"># Compile data
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">sample</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">sample</span><span class="p">:</span> <span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="c1"># Add regressors
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">sample</span><span class="p">]],</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="n">sample</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+<span class="c1"># Train
+</span><span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">)</span>
+    
+<span class="c1"># Init predictions
+</span><span class="n">fut</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">make_future_dataframe</span><span class="p">(</span><span class="n">periods</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">merge_content</span> <span class="o">=</span> <span class="n">test_promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">sample</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">sample</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">fut</span> <span class="o">=</span> <span class="n">fut</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">merge_content</span><span class="p">)</span>
+<span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+<span class="c1"># Model
+</span><span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">fut</span><span class="p">)</span> <span class="c1">#[['ds', 'yhat']] 
+</span><span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+    
+<span class="c1"># Output
+</span><span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">sample</span><span class="p">].</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>    
+<span class="n">out</span> <span class="o">=</span> <span class="n">out</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="c1">#.drop(['ds', 'oil', 'onpromotion'], axis = 1)
+</span></code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>14:13:53 - cmdstanpy - INFO - Chain [1] start processing
+14:13:53 - cmdstanpy - INFO - Chain [1] done processing
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Examining Outputs for </span><span class="si">{</span><span class="n">sample</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    
+<span class="n">model</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Examining Outputs for 29_PET SUPPLIES
+</code></pre></div></div>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_38_1.png" alt="png" /></p>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_38_2.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span><span class="p">.</span><span class="nf">plot_components</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_39_0.png" alt="png" /></p>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_39_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="sh">'</span><span class="s">Showing Time Series for Model: </span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Showing Time Series for Model: 
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion_x</th>
+      <th>ds</th>
+      <th>trend</th>
+      <th>yhat_lower</th>
+      <th>yhat_upper</th>
+      <th>trend_lower</th>
+      <th>...</th>
+      <th>weekly</th>
+      <th>weekly_lower</th>
+      <th>weekly_upper</th>
+      <th>yearly</th>
+      <th>yearly_lower</th>
+      <th>yearly_upper</th>
+      <th>multiplicative_terms</th>
+      <th>multiplicative_terms_lower</th>
+      <th>multiplicative_terms_upper</th>
+      <th>sales</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3001607</td>
+      <td>2017-08-16</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>7.514397</td>
+      <td>4.404190</td>
+      <td>8.789459</td>
+      <td>7.514397</td>
+      <td>...</td>
+      <td>-0.199900</td>
+      <td>-0.199900</td>
+      <td>-0.199900</td>
+      <td>-0.229431</td>
+      <td>-0.229431</td>
+      <td>-0.229431</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>6.625475</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>3003389</td>
+      <td>2017-08-17</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-17</td>
+      <td>7.520778</td>
+      <td>4.404179</td>
+      <td>8.655474</td>
+      <td>7.520778</td>
+      <td>...</td>
+      <td>-0.343361</td>
+      <td>-0.343361</td>
+      <td>-0.343361</td>
+      <td>-0.181378</td>
+      <td>-0.181378</td>
+      <td>-0.181378</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>6.541952</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3005171</td>
+      <td>2017-08-18</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-18</td>
+      <td>7.527158</td>
+      <td>4.113727</td>
+      <td>8.530878</td>
+      <td>7.527158</td>
+      <td>...</td>
+      <td>-0.558148</td>
+      <td>-0.558148</td>
+      <td>-0.558148</td>
+      <td>-0.131434</td>
+      <td>-0.131434</td>
+      <td>-0.131434</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>6.414476</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3006953</td>
+      <td>2017-08-19</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-19</td>
+      <td>7.533539</td>
+      <td>5.316851</td>
+      <td>9.693612</td>
+      <td>7.533539</td>
+      <td>...</td>
+      <td>0.510069</td>
+      <td>0.510069</td>
+      <td>0.510069</td>
+      <td>-0.080453</td>
+      <td>-0.080453</td>
+      <td>-0.080453</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>7.515592</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3008735</td>
+      <td>2017-08-20</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-20</td>
+      <td>7.539920</td>
+      <td>5.291586</td>
+      <td>9.929054</td>
+      <td>7.539920</td>
+      <td>...</td>
+      <td>0.736900</td>
+      <td>0.736900</td>
+      <td>0.736900</td>
+      <td>-0.029338</td>
+      <td>-0.029338</td>
+      <td>-0.029338</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>7.799919</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 345 columns</p>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(16, 345)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">],</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="sh">'</span><span class="s">dodgerblue</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="p">.</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">],</span> <span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="p">.</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Count of Item</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Date</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Text(0.5, 0, 'Date')
+</code></pre></div></div>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_43_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+</code></pre></div></div>]]></content><author><name></name></author><summary type="html"><![CDATA[Forecasting at Scale: Time-Series with Prophet]]></summary></entry><entry><title type="html">Markdown kitchen sink</title><link href="http://localhost:4000/2024/12/01/markdown-kitchen-sink.html" rel="alternate" type="text/html" title="Markdown kitchen sink" /><published>2024-12-01T00:00:00-05:00</published><updated>2024-12-01T00:00:00-05:00</updated><id>http://localhost:4000/2024/12/01/markdown-kitchen-sink</id><content type="html" xml:base="http://localhost:4000/2024/12/01/markdown-kitchen-sink.html"><![CDATA[<p><button class="btn js-toggle-dark-mode">Preview dark color scheme</button></p>
+
+<script>
+const toggleDarkMode = document.querySelector('.js-toggle-dark-mode');
+
+jtd.addEvent(toggleDarkMode, 'click', function(){
+  if (jtd.getTheme() === 'dark') {
+    jtd.setTheme('light');
+    toggleDarkMode.textContent = 'Preview dark color scheme';
+  } else {
+    jtd.setTheme('dark');
+    toggleDarkMode.textContent = 'Return to the light side';
+  }
+});
+</script>
+
+<p>Text can be <strong>bold</strong>, <em>italic</em>, or <del>strikethrough</del>.</p>
+
+<p><a href="/">Link to another page</a>.</p>
+
+<p>There should be whitespace between paragraphs.</p>
+
+<p>There should be whitespace between paragraphs. We recommend including a README, or a file with information about your project.</p>
+
+<h1 id="header-1">Header 1</h1>
+
+<p>This is a normal paragraph following a header. GitHub is a code hosting platform for version control and collaboration. It lets you and others work together on projects from anywhere.</p>
+
+<h2 id="header-2">Header 2</h2>
+
+<blockquote>
+  <p>This is a blockquote following a header.</p>
+
+  <p>When something is important enough, you do it even if the odds are not in your favor.</p>
+</blockquote>
+
+<h3 id="header-3">Header 3</h3>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Javascript code with syntax highlighting.</span>
+<span class="kd">var</span> <span class="nx">fun</span> <span class="o">=</span> <span class="kd">function</span> <span class="nf">lang</span><span class="p">(</span><span class="nx">l</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">dateformat</span><span class="p">.</span><span class="nx">i18n</span> <span class="o">=</span> <span class="nf">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">./lang/</span><span class="dl">'</span> <span class="o">+</span> <span class="nx">l</span><span class="p">)</span>
+  <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Ruby code with syntax highlighting</span>
+<span class="no">GitHubPages</span><span class="o">::</span><span class="no">Dependencies</span><span class="p">.</span><span class="nf">gems</span><span class="p">.</span><span class="nf">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">gem</span><span class="p">,</span> <span class="n">version</span><span class="o">|</span>
+  <span class="n">s</span><span class="p">.</span><span class="nf">add_dependency</span><span class="p">(</span><span class="n">gem</span><span class="p">,</span> <span class="s2">"= </span><span class="si">#{</span><span class="n">version</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<h4 id="header-4-with-code-not-transformed">Header 4 <code class="language-plaintext highlighter-rouge">with code not transformed</code></h4>
+
+<ul>
+  <li>This is an unordered list following a header.</li>
+  <li>This is an unordered list following a header.</li>
+  <li>This is an unordered list following a header.</li>
+</ul>
+
+<h5 id="header-5">Header 5</h5>
+
+<ol>
+  <li>This is an ordered list following a header.</li>
+  <li>This is an ordered list following a header.</li>
+  <li>This is an ordered list following a header.</li>
+</ol>
+
+<h6 id="header-6">Header 6</h6>
+
+<p><a href=".">This is a very long link which wraps and therefore doesn’t overflow
+even when it comes at the beginning</a> of the line.</p>
+
+<ul>
+  <li><a href=".">This is a very long link which wraps and therefore doesn’t overflow the line
+when used first in an item </a> in a list.</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">head1</th>
+      <th style="text-align: left">head two</th>
+      <th style="text-align: left">three</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">ok</td>
+      <td style="text-align: left">good swedish fish</td>
+      <td style="text-align: left">nice</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">out of stock</td>
+      <td style="text-align: left">good and plenty</td>
+      <td style="text-align: left">nice</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">ok</td>
+      <td style="text-align: left">good <code class="language-plaintext highlighter-rouge">oreos</code></td>
+      <td style="text-align: left">hmm</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">ok</td>
+      <td style="text-align: left">good <code class="language-plaintext highlighter-rouge">zoute</code> drop</td>
+      <td style="text-align: left">yumm</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="theres-a-horizontal-rule-below-this">There’s a horizontal rule below this.</h3>
+
+<hr />
+
+<h3 id="here-is-an-unordered-list">Here is an unordered list:</h3>
+
+<ul>
+  <li>Item foo</li>
+  <li>Item bar</li>
+  <li>Item baz</li>
+  <li>Item zip</li>
+</ul>
+
+<h3 id="and-an-ordered-list">And an ordered list:</h3>
+
+<ol>
+  <li>Item one</li>
+  <li>Item two</li>
+  <li>Item three</li>
+  <li>Item four</li>
+</ol>
+
+<h3 id="and-an-ordered-list-continued">And an ordered list, continued:</h3>
+
+<ol>
+  <li>Item one</li>
+  <li>Item two</li>
+</ol>
+
+<p>Some text</p>
+
+<ol style="counter-reset:none">
+  <li>Item three</li>
+  <li>Item four</li>
+</ol>
+
+<h3 id="and-an-ordered-list-starting-from-42">And an ordered list starting from 42:</h3>
+
+<ol style="counter-reset:step-counter 41">
+  <li>Item 42</li>
+  <li>Item 43</li>
+  <li>Item 44</li>
+</ol>
+
+<h3 id="and-a-nested-list">And a nested list:</h3>
+
+<ul>
+  <li>level 1 item
+    <ul>
+      <li>level 2 item</li>
+      <li>level 2 item
+        <ul>
+          <li>level 3 item</li>
+          <li>level 3 item</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>level 1 item
+    <ul>
+      <li>level 2 item</li>
+      <li>level 2 item</li>
+      <li>level 2 item</li>
+    </ul>
+  </li>
+  <li>level 1 item
+    <ul>
+      <li>level 2 item</li>
+      <li>level 2 item</li>
+    </ul>
+  </li>
+  <li>level 1 item</li>
+</ul>
+
+<h3 id="nesting-an-ol-in-ul-in-an-ol">Nesting an ol in ul in an ol</h3>
+
+<ul>
+  <li>level 1 item (ul)
+    <ol>
+      <li>level 2 item (ol)</li>
+      <li>level 2 item (ol)
+        <ul>
+          <li>level 3 item (ul)</li>
+          <li>level 3 item (ul)</li>
+        </ul>
+      </li>
+    </ol>
+  </li>
+  <li>level 1 item (ul)
+    <ol>
+      <li>level 2 item (ol)</li>
+      <li>level 2 item (ol)
+        <ul>
+          <li>level 3 item (ul)</li>
+          <li>level 3 item (ul)</li>
+        </ul>
+      </li>
+      <li>level 4 item (ol)</li>
+      <li>level 4 item (ol)
+        <ul>
+          <li>level 3 item (ul)</li>
+          <li>level 3 item (ul)</li>
+        </ul>
+      </li>
+    </ol>
+  </li>
+  <li>level 1 item (ul)</li>
+</ul>
+
+<h3 id="and-a-task-list">And a task list</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Hello, this is a TODO item</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Hello, this is another TODO item</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" />Goodbye, this item is done</li>
+</ul>
+
+<h3 id="nesting-task-lists">Nesting task lists</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 1 item (task)
+    <ul class="task-list">
+      <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 2 item (task)</li>
+      <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 2 item (task)</li>
+    </ul>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 1 item (task)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 1 item (task)</li>
+</ul>
+
+<h3 id="nesting-a-ul-in-a-task-list">Nesting a ul in a task list</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 1 item (task)
+    <ul>
+      <li>level 2 item (ul)</li>
+      <li>level 2 item (ul)</li>
+    </ul>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 1 item (task)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 1 item (task)</li>
+</ul>
+
+<h3 id="nesting-a-task-list-in-a-ul">Nesting a task list in a ul</h3>
+
+<ul>
+  <li>level 1 item (ul)
+    <ul class="task-list">
+      <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 2 item (task)</li>
+      <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />level 2 item (task)</li>
+    </ul>
+  </li>
+  <li>level 1 item (ul)</li>
+  <li>level 1 item (ul)</li>
+</ul>
+
+<h3 id="small-image">Small image</h3>
+
+<p><img src="../../assets/images/small-image.jpg" alt="" /></p>
+
+<h3 id="large-image">Large image</h3>
+
+<p><img src="../../assets/images/large-image.jpg" alt="" /></p>
+
+<p>“<a href="https://www.flickr.com/photos/97810305@N08/9401451269">Wroclaw University Library digitizing rare archival texts</a>” by <a href="https://www.flickr.com/photos/97810305@N08">j_cadmus</a> is marked with <a href="https://creativecommons.org/licenses/by/2.0/?ref=openverse">CC BY 2.0</a>.</p>
+
+<h3 id="labels">Labels</h3>
+
+<p class="label">I’m a label</p>
+
+<p class="label label-blue">blue</p>
+<p class="label label-green">green</p>
+<p class="label label-purple">purple</p>
+<p class="label label-yellow">yellow</p>
+<p class="label label-red">red</p>
+
+<p class="label"><strong>bold</strong></p>
+<p class="label"><em>italic</em></p>
+<p class="label"><strong><em>bold + italic</em></strong></p>
+
+<h3 id="definition-lists-can-be-used-with-html-syntax">Definition lists can be used with HTML syntax.</h3>
+
+<dl>
+<dt>Name</dt>
+<dd>Godzilla</dd>
+<dt>Born</dt>
+<dd>1952</dd>
+<dt>Birthplace</dt>
+<dd>Japan</dd>
+<dt>Color</dt>
+<dd>Green</dd>
+</dl>
+
+<h4 id="multiple-description-terms-and-values">Multiple description terms and values</h4>
+
+<dl>
+  <dt>Term</dt>
+  <dd>Brief description of Term</dd>
+  <dt>Longer Term</dt>
+  <dd>Longer description of Term,
+possibly more than one line</dd>
+  <dt>Term</dt>
+  <dd>First description of Term,
+possibly more than one line</dd>
+  <dd>
+    <p>Second description of Term,
+possibly more than one line</p>
+  </dd>
+  <dt>Term1</dt>
+  <dt>Term2</dt>
+  <dd>Single description of Term1 and Term2,
+possibly more than one line</dd>
+  <dt>Term1</dt>
+  <dt>Term2</dt>
+  <dd>First description of Term1 and Term2,
+possibly more than one line</dd>
+  <dd>
+    <p>Second description of Term1 and Term2,
+possibly more than one line</p>
+  </dd>
+</dl>
+
+<h3 id="more-code">More code</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">dump_args</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sh">"</span><span class="s">This decorator dumps out the arguments passed to a function before calling it</span><span class="sh">"</span>
+    <span class="n">argnames</span> <span class="o">=</span> <span class="n">func</span><span class="p">.</span><span class="n">func_code</span><span class="p">.</span><span class="n">co_varnames</span><span class="p">[:</span><span class="n">func</span><span class="p">.</span><span class="n">func_code</span><span class="p">.</span><span class="n">co_argcount</span><span class="p">]</span>
+    <span class="n">fname</span> <span class="o">=</span> <span class="n">func</span><span class="p">.</span><span class="n">func_name</span>
+    <span class="k">def</span> <span class="nf">echo_func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">print</span> <span class="n">fname</span><span class="p">,</span> <span class="sh">"</span><span class="s">:</span><span class="sh">"</span><span class="p">,</span> <span class="sh">'</span><span class="s">, </span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span>
+            <span class="sh">'</span><span class="s">%s=%r</span><span class="sh">'</span> <span class="o">%</span> <span class="n">entry</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nf">zip</span><span class="p">(</span><span class="n">argnames</span><span class="p">,</span><span class="n">args</span><span class="p">)</span> <span class="o">+</span> <span class="n">kwargs</span><span class="p">.</span><span class="nf">items</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nf">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">echo_func</span>
+
+<span class="nd">@dump_args</span>
+<span class="k">def</span> <span class="nf">f1</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">,</span><span class="n">c</span><span class="p">):</span>
+    <span class="k">print</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+
+<span class="nf">f1</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">precondition</span><span class="p">(</span><span class="n">precondition</span><span class="p">,</span> <span class="n">use_conditions</span><span class="o">=</span><span class="n">DEFAULT_ON</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nf">conditions</span><span class="p">(</span><span class="n">precondition</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">use_conditions</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">postcondition</span><span class="p">(</span><span class="n">postcondition</span><span class="p">,</span> <span class="n">use_conditions</span><span class="o">=</span><span class="n">DEFAULT_ON</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nf">conditions</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">postcondition</span><span class="p">,</span> <span class="n">use_conditions</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">conditions</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="sh">'</span><span class="s">__precondition</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">__postcondition</span><span class="sh">'</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">pre</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">use_conditions</span><span class="o">=</span><span class="n">DEFAULT_ON</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">use_conditions</span><span class="p">:</span>
+            <span class="n">pre</span><span class="p">,</span> <span class="n">post</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+
+        <span class="n">self</span><span class="p">.</span><span class="n">__precondition</span>  <span class="o">=</span> <span class="n">pre</span>
+        <span class="n">self</span><span class="p">.</span><span class="n">__postcondition</span> <span class="o">=</span> <span class="n">post</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Long, single-line code blocks should not wrap. They should horizontally scroll if they are too long. This line should be long enough to demonstrate this.
+</code></pre></div></div>
+
+<h3 id="mermaid-diagrams">Mermaid Diagrams</h3>
+
+<p>The following code is displayed as a diagram only when a <code class="language-plaintext highlighter-rouge">mermaid</code> key supplied in <code class="language-plaintext highlighter-rouge">_config.yml</code>.</p>
+
+<pre><code class="language-mermaid">graph TD;
+    accTitle: the diamond pattern
+    accDescr: a graph with four nodes: A points to B and C, while B and C both point to D
+    A--&gt;B;
+    A--&gt;C;
+    B--&gt;D;
+    C--&gt;D;
+</code></pre>
+
+<h3 id="collapsed-section">Collapsed Section</h3>
+
+<p>The following uses the <a href="https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/organizing-information-with-collapsed-sections"><code class="language-plaintext highlighter-rouge">&lt;details&gt;</code></a> tag to create a collapsed section.</p>
+
+<details>
+  <summary>Shopping list (click me!)</summary>
+
+  <p>This is content inside a <code class="language-plaintext highlighter-rouge">&lt;details&gt;</code> dropdown.</p>
+
+  <ul class="task-list">
+    <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Apples</li>
+    <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Oranges</li>
+    <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Milk</li>
+  </ul>
+
+</details>]]></content><author><name></name></author><summary type="html"><![CDATA[Preview dark color scheme]]></summary></entry></feed>

@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Time-Series Forecasting | Zan Sadiq</title>
+<meta name="generator" content="Jekyll v4.3.4" />
+<meta property="og:title" content="Time-Series Forecasting" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Forecasting at Scale: Time-Series with Prophet" />
+<meta property="og:description" content="Forecasting at Scale: Time-Series with Prophet" />
+<link rel="canonical" href="http://localhost:4000/2024/12/05/prophet-store-sales-forecasting.html" />
+<meta property="og:url" content="http://localhost:4000/2024/12/05/prophet-store-sales-forecasting.html" />
+<meta property="og:site_name" content="Zan Sadiq" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-12-05T00:00:00-05:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Time-Series Forecasting" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2024-12-05T00:00:00-05:00","datePublished":"2024-12-05T00:00:00-05:00","description":"Forecasting at Scale: Time-Series with Prophet","headline":"Time-Series Forecasting","mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/2024/12/05/prophet-store-sales-forecasting.html"},"url":"http://localhost:4000/2024/12/05/prophet-store-sales-forecasting.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Zan Sadiq" />
+</head>
+<body><header class="site-header">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Zan Sadiq</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/resume/">Resume</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Time-Series Forecasting</h1>
+    <p class="post-meta"><time class="dt-published" datetime="2024-12-05T00:00:00-05:00" itemprop="datePublished">
+        Dec 5, 2024
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h1 id="forecasting-at-scale-time-series-with-prophet">Forecasting at Scale: Time-Series with Prophet</h1>
+
+<p>In this exercise we will use parallel computing to implement prophet models for each product in the data and conduct forecasting to submit to kaggle for evaluation</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Import libraries
+</span><span class="kn">import</span> <span class="n">pandas</span> <span class="k">as</span> <span class="n">pd</span>
+<span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="n">multiprocessing</span> <span class="kn">import</span> <span class="n">Pool</span><span class="p">,</span> <span class="n">cpu_count</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">warnings</span>
+<span class="n">warnings</span><span class="p">.</span><span class="nf">filterwarnings</span><span class="p">(</span><span class="sh">'</span><span class="s">ignore</span><span class="sh">'</span><span class="p">)</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+<span class="kn">import</span> <span class="n">zipfile</span>
+<span class="kn">import</span> <span class="n">itertools</span>
+<span class="kn">from</span> <span class="n">prophet</span> <span class="kn">import</span> <span class="n">Prophet</span>
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">import</span> <span class="n">sys</span>
+<span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">import</span> <span class="n">random</span> 
+
+<span class="c1"># List contents
+</span><span class="k">for</span> <span class="n">dirname</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">filenames</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">walk</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input</span><span class="sh">'</span><span class="p">):</span>
+    
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+        
+        <span class="nf">print</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">dirname</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/kaggle/input/store-sales-time-series-forecasting/oil.csv
+/kaggle/input/store-sales-time-series-forecasting/sample_submission.csv
+/kaggle/input/store-sales-time-series-forecasting/holidays_events.csv
+/kaggle/input/store-sales-time-series-forecasting/stores.csv
+/kaggle/input/store-sales-time-series-forecasting/train.csv
+/kaggle/input/store-sales-time-series-forecasting/test.csv
+/kaggle/input/store-sales-time-series-forecasting/transactions.csv
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Load data
+</span><span class="n">train</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/train.csv</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/test.csv</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">holidays</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/holidays_events.csv</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">description</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">oil</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">read_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">/kaggle/input/store-sales-time-series-forecasting/oil.csv</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">dcoilwtico</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Inspect data
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Unique Item Families:    </span><span class="si">{</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">family</span><span class="sh">'</span><span class="p">].</span><span class="nf">nunique</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span> 
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s"># Stores:                </span><span class="si">{</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">store_nbr</span><span class="sh">'</span><span class="p">].</span><span class="nf">nunique</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Dataset start date:      </span><span class="si">{</span><span class="nf">min</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Dataset end date:        </span><span class="si">{</span><span class="nf">max</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test set start date:     </span><span class="si">{</span><span class="nf">min</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Test set end date:       </span><span class="si">{</span><span class="nf">max</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">interval</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">date_range</span><span class="p">(</span><span class="nf">min</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">]),</span> <span class="nf">max</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">]),</span> <span class="n">freq</span> <span class="o">=</span> <span class="sh">'</span><span class="s">d</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Num Days:               </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Train Shape:            </span><span class="si">{</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">].</span><span class="nf">nunique</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Unique Item Families:    33
+# Stores:                54
+Dataset start date:      2013-01-01
+Dataset end date:        2017-08-15
+Test set start date:     2017-08-16
+Test set end date:       2017-08-31
+Num Days:               1688
+Train Shape:            1684
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">oil</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2013-01-01</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2013-01-02</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2013-01-03</td>
+      <td>92.97</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2013-01-04</td>
+      <td>93.12</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2013-01-07</td>
+      <td>93.20</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Fix dates
+</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">oil</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">oil</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+
+<span class="c1"># Create a master label for training 
+</span><span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">store_nbr</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="sh">'</span><span class="s">_</span><span class="sh">'</span> <span class="o">+</span> <span class="n">train</span><span class="p">[</span><span class="sh">'</span><span class="s">family</span><span class="sh">'</span><span class="p">]</span>
+<span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">store_nbr</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span> <span class="sh">'</span><span class="s">_</span><span class="sh">'</span> <span class="o">+</span> <span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">family</span><span class="sh">'</span><span class="p">]</span>
+
+<span class="c1"># Merge data
+</span><span class="n">test1</span> <span class="o">=</span> <span class="n">test</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">train1</span> <span class="o">=</span> <span class="n">train</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">date</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(28512, 7)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test1</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(28512, 7)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test1</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+      <th>item</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3000888</td>
+      <td>1</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>1_AUTOMOTIVE</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>3000889</td>
+      <td>1</td>
+      <td>BABY CARE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>1_BABY CARE</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3000890</td>
+      <td>1</td>
+      <td>BEAUTY</td>
+      <td>2</td>
+      <td>2017-08-16</td>
+      <td>1_BEAUTY</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3000891</td>
+      <td>1</td>
+      <td>BEVERAGES</td>
+      <td>20</td>
+      <td>2017-08-16</td>
+      <td>1_BEVERAGES</td>
+      <td>46.8</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3000892</td>
+      <td>1</td>
+      <td>BOOKS</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>1_BOOKS</td>
+      <td>46.8</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">train1</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>sales</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+      <th>item</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>1</td>
+      <td>AUTOMOTIVE</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_AUTOMOTIVE</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>1</td>
+      <td>BABY CARE</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BABY CARE</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>1</td>
+      <td>BEAUTY</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BEAUTY</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>1</td>
+      <td>BEVERAGES</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BEVERAGES</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>1</td>
+      <td>BOOKS</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>2013-01-01</td>
+      <td>1_BOOKS</td>
+      <td>93.14</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Create an index for each product
+</span><span class="n">df</span> <span class="o">=</span> <span class="n">train1</span><span class="p">.</span><span class="nf">pivot</span><span class="p">(</span><span class="n">index</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">).</span><span class="nf">reset_index</span><span class="p">()</span> <span class="c1">#.rename({'date': 'ds'}, axis = 1)
+</span><span class="n">promos</span> <span class="o">=</span> <span class="n">train1</span><span class="p">.</span><span class="nf">pivot</span><span class="p">(</span><span class="n">index</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">).</span><span class="nf">reset_index</span><span class="p">()</span> <span class="c1">#.rename({'date': 'ds'}, axis = 1)
+</span><span class="n">test_promos</span> <span class="o">=</span> <span class="n">test1</span><span class="p">.</span><span class="nf">pivot</span><span class="p">(</span><span class="n">index</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">columns</span> <span class="o">=</span> <span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">).</span><span class="nf">reset_index</span><span class="p">()</span> <span class="c1">#.rename({'date': 'ds'}, axis = 1)
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Instantiate processing power for parallelism
+</span><span class="n">num_cpus</span> <span class="o">=</span> <span class="nf">cpu_count</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Get an index of all products
+</span><span class="n">items</span> <span class="o">=</span> <span class="n">df</span><span class="p">.</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="n">columns</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!kaggle competitions submit -c store-sales-time-series-forecasting -f submission.csv -m "prophet_forecasting_at_scale"
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test</span><span class="p">.</span><span class="nf">isnull</span><span class="p">().</span><span class="nf">sum</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>id             0
+date           0
+store_nbr      0
+family         0
+onpromotion    0
+ds             0
+item           0
+dtype: int64
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="nc">Prophet</span><span class="p">(</span><span class="n">holidays</span> <span class="o">=</span> <span class="n">holidays</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">]])</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">)</span> <span class="c1">#, standardize = False)
+</span><span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span> <span class="p">)</span><span class="c1">#, standardize = False)
+</span></code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;prophet.forecaster.Prophet at 0x7c37f7ace770&gt;
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Compile data
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="c1"># cONVERT DATES
+</span><span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+
+<span class="c1"># Add regressors
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]]]).</span><span class="nf">rename</span><span class="p">({</span><span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">trainingdata</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>y</th>
+      <th>onpromotion</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2013-01-01</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2013-01-02</td>
+      <td>3.0</td>
+      <td>0</td>
+      <td>93.14</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2013-01-03</td>
+      <td>2.0</td>
+      <td>0</td>
+      <td>92.97</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2013-01-04</td>
+      <td>2.0</td>
+      <td>0</td>
+      <td>93.12</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2013-01-05</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>93.20</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>14:13:49 - cmdstanpy - INFO - Chain [1] start processing
+14:13:50 - cmdstanpy - INFO - Chain [1] done processing
+
+
+
+
+
+&lt;prophet.forecaster.Prophet at 0x7c37f7ace770&gt;
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fut</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">make_future_dataframe</span><span class="p">(</span><span class="n">periods</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">merge_content</span> <span class="o">=</span> <span class="n">test_promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">fut</span> <span class="o">=</span> <span class="n">fut</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">merge_content</span><span class="p">)</span>
+<span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fut</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>onpromotion</th>
+      <th>oil</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2017-08-16</td>
+      <td>0</td>
+      <td>46.80</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2017-08-17</td>
+      <td>0</td>
+      <td>47.07</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2017-08-18</td>
+      <td>0</td>
+      <td>48.59</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2017-08-19</td>
+      <td>0</td>
+      <td>47.39</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2017-08-20</td>
+      <td>0</td>
+      <td>47.39</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2017-08-21</td>
+      <td>0</td>
+      <td>47.39</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2017-08-22</td>
+      <td>0</td>
+      <td>47.65</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2017-08-23</td>
+      <td>0</td>
+      <td>48.45</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2017-08-24</td>
+      <td>0</td>
+      <td>47.24</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2017-08-25</td>
+      <td>0</td>
+      <td>47.65</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2017-08-26</td>
+      <td>0</td>
+      <td>46.40</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2017-08-27</td>
+      <td>0</td>
+      <td>46.40</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>2017-08-28</td>
+      <td>0</td>
+      <td>46.40</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2017-08-29</td>
+      <td>0</td>
+      <td>46.46</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>2017-08-30</td>
+      <td>2</td>
+      <td>45.96</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>2017-08-31</td>
+      <td>0</td>
+      <td>47.26</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">fut</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">preds</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">]]</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>ds</th>
+      <th>onpromotion</th>
+      <th>oil</th>
+      <th>yhat</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2017-08-16</td>
+      <td>0.000000</td>
+      <td>-0.095392</td>
+      <td>1.749961</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2017-08-17</td>
+      <td>0.000000</td>
+      <td>-0.094169</td>
+      <td>1.512343</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2017-08-18</td>
+      <td>0.000000</td>
+      <td>-0.087285</td>
+      <td>1.776728</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2017-08-19</td>
+      <td>0.000000</td>
+      <td>-0.092720</td>
+      <td>2.870283</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2017-08-20</td>
+      <td>0.000000</td>
+      <td>-0.092720</td>
+      <td>3.268697</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2017-08-21</td>
+      <td>0.000000</td>
+      <td>-0.092720</td>
+      <td>2.059172</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2017-08-22</td>
+      <td>0.000000</td>
+      <td>-0.091543</td>
+      <td>2.067662</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>2017-08-23</td>
+      <td>0.000000</td>
+      <td>-0.087919</td>
+      <td>2.086430</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2017-08-24</td>
+      <td>0.000000</td>
+      <td>-0.093400</td>
+      <td>0.411933</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>2017-08-25</td>
+      <td>0.000000</td>
+      <td>-0.091543</td>
+      <td>2.089462</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>2017-08-26</td>
+      <td>0.000000</td>
+      <td>-0.097204</td>
+      <td>3.169663</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>2017-08-27</td>
+      <td>0.000000</td>
+      <td>-0.097204</td>
+      <td>3.550008</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>2017-08-28</td>
+      <td>0.000000</td>
+      <td>-0.097204</td>
+      <td>2.317490</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>2017-08-29</td>
+      <td>0.000000</td>
+      <td>-0.096932</td>
+      <td>2.297301</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>2017-08-30</td>
+      <td>7.158534</td>
+      <td>-0.099197</td>
+      <td>9.436443</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>2017-08-31</td>
+      <td>0.000000</td>
+      <td>-0.093309</td>
+      <td>2.004886</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]].</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">out</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>33</th>
+      <td>3000921</td>
+      <td>2017-08-16</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+    </tr>
+    <tr>
+      <th>1815</th>
+      <td>3002703</td>
+      <td>2017-08-17</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-17</td>
+    </tr>
+    <tr>
+      <th>3597</th>
+      <td>3004485</td>
+      <td>2017-08-18</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-18</td>
+    </tr>
+    <tr>
+      <th>5379</th>
+      <td>3006267</td>
+      <td>2017-08-19</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-19</td>
+    </tr>
+    <tr>
+      <th>7161</th>
+      <td>3008049</td>
+      <td>2017-08-20</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-20</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span><span class="p">.</span><span class="nf">tail</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>19635</th>
+      <td>3020523</td>
+      <td>2017-08-27</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-27</td>
+    </tr>
+    <tr>
+      <th>21417</th>
+      <td>3022305</td>
+      <td>2017-08-28</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-28</td>
+    </tr>
+    <tr>
+      <th>23199</th>
+      <td>3024087</td>
+      <td>2017-08-29</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-29</td>
+    </tr>
+    <tr>
+      <th>24981</th>
+      <td>3025869</td>
+      <td>2017-08-30</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>2</td>
+      <td>2017-08-30</td>
+    </tr>
+    <tr>
+      <th>26763</th>
+      <td>3027651</td>
+      <td>2017-08-31</td>
+      <td>10</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-31</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># cONVERT DATES
+</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">promos</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+<span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Create a function to perform modeling
+</span><span class="k">def</span> <span class="nf">prophet_model</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    
+    <span class="c1"># Init model
+</span>    <span class="n">model</span> <span class="o">=</span> <span class="nc">Prophet</span><span class="p">(</span><span class="n">holidays</span> <span class="o">=</span> <span class="n">holidays</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">]])</span>
+    <span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">)</span> <span class="c1">#, standardize = False)
+</span>    <span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span> <span class="p">)</span><span class="c1">#, standardize = False)
+</span>
+    <span class="c1"># Compile data
+</span>    <span class="n">trainingdata</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">item</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">item</span><span class="p">:</span> <span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="c1"># Add regressors
+</span>    <span class="n">trainingdata</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">item</span><span class="p">]],</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="n">item</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="c1"># Train
+</span>    <span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">)</span>
+    
+    <span class="c1"># Init predictions
+</span>    <span class="n">fut</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">make_future_dataframe</span><span class="p">(</span><span class="n">periods</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span>
+    <span class="n">merge_content</span> <span class="o">=</span> <span class="n">test_promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">item</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">item</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">fut</span> <span class="o">=</span> <span class="n">fut</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">merge_content</span><span class="p">)</span>
+    <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="c1"># Model
+</span>    <span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">fut</span><span class="p">)[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">]]</span> 
+    <span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+    
+    <span class="c1"># Output
+</span>    <span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">item</span><span class="p">].</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>    
+    
+    <span class="k">return</span> <span class="n">out</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="c1">#.drop(['ds', 'oil', 'onpromotion'], axis = 1)
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>'34_LADIESWEAR'
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">prophet_model</span><span class="p">(</span><span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">items</span><span class="p">))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>14:13:51 - cmdstanpy - INFO - Chain [1] start processing
+14:13:51 - cmdstanpy - INFO - Chain [1] done processing
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion</th>
+      <th>ds</th>
+      <th>sales</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3001581</td>
+      <td>2017-08-16</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>6.083554</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>3003363</td>
+      <td>2017-08-17</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-17</td>
+      <td>6.022175</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3005145</td>
+      <td>2017-08-18</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-18</td>
+      <td>6.568839</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3006927</td>
+      <td>2017-08-19</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-19</td>
+      <td>7.950376</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3008709</td>
+      <td>2017-08-20</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-20</td>
+      <td>8.325301</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>3010491</td>
+      <td>2017-08-21</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-21</td>
+      <td>6.421023</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>3012273</td>
+      <td>2017-08-22</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-22</td>
+      <td>6.901322</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>3014055</td>
+      <td>2017-08-23</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-23</td>
+      <td>6.409948</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>3015837</td>
+      <td>2017-08-24</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-24</td>
+      <td>5.036301</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>3017619</td>
+      <td>2017-08-25</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-25</td>
+      <td>6.838067</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>3019401</td>
+      <td>2017-08-26</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-26</td>
+      <td>8.204809</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>3021183</td>
+      <td>2017-08-27</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-27</td>
+      <td>8.558502</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>3022965</td>
+      <td>2017-08-28</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-28</td>
+      <td>6.625649</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>3024747</td>
+      <td>2017-08-29</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-29</td>
+      <td>7.066330</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>3026529</td>
+      <td>2017-08-30</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-30</td>
+      <td>6.506890</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>3028311</td>
+      <td>2017-08-31</td>
+      <td>29</td>
+      <td>AUTOMOTIVE</td>
+      <td>0</td>
+      <td>2017-08-31</td>
+      <td>6.418256</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Forecast
+#start = time.time()
+</span>
+<span class="c1"># Disable outputs
+#logging.getLogger("cmdstanpy").disabled = True 
+</span>
+<span class="c1"># Parallelization
+#p = Pool(num_cpus)
+#result = p.map(prophet_model, items)
+</span>
+<span class="c1">#end = time.time()
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#print(f'Elapsed Modeling Time:  {round((start - end) / 60, 2)} minutes..')
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Compile output
+#res = pd.concat([i for i in result])
+#out = res[['id', 'sales']]
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#out.shape
+</span></code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">test</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(28512, 7)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Write file
+</span><span class="n">out</span><span class="p">.</span><span class="nf">to_csv</span><span class="p">(</span><span class="sh">'</span><span class="s">submission.csv</span><span class="sh">'</span><span class="p">,</span> <span class="n">index</span> <span class="o">=</span> <span class="bp">False</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Visualize outputs
+</span><span class="n">sample</span> <span class="o">=</span> <span class="n">random</span><span class="p">.</span><span class="nf">choice</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">sample</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>'29_PET SUPPLIES'
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Init model
+</span><span class="n">model</span> <span class="o">=</span> <span class="nc">Prophet</span><span class="p">(</span><span class="n">holidays</span> <span class="o">=</span> <span class="n">holidays</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">holiday</span><span class="sh">'</span><span class="p">]])</span>
+<span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">)</span> <span class="c1">#, standardize = False)
+</span><span class="n">model</span><span class="p">.</span><span class="nf">add_regressor</span><span class="p">(</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span> <span class="p">)</span><span class="c1">#, standardize = False)
+</span>
+<span class="c1"># Compile data
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">sample</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">sample</span><span class="p">:</span> <span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">].</span><span class="nf">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="c1"># Add regressors
+</span><span class="n">trainingdata</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">sample</span><span class="p">]],</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="n">sample</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+<span class="c1"># Train
+</span><span class="n">model</span><span class="p">.</span><span class="nf">fit</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">)</span>
+    
+<span class="c1"># Init predictions
+</span><span class="n">fut</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">make_future_dataframe</span><span class="p">(</span><span class="n">periods</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span>
+<span class="n">merge_content</span> <span class="o">=</span> <span class="n">test_promos</span><span class="p">[[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">,</span> <span class="n">sample</span><span class="p">]].</span><span class="nf">rename</span><span class="p">({</span><span class="n">sample</span><span class="p">:</span> <span class="sh">'</span><span class="s">onpromotion</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">).</span><span class="nf">merge</span><span class="p">(</span><span class="n">oil</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">fut</span> <span class="o">=</span> <span class="n">fut</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">merge_content</span><span class="p">)</span>
+<span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">fut</span><span class="p">[</span><span class="sh">'</span><span class="s">oil</span><span class="sh">'</span><span class="p">].</span><span class="nf">fillna</span><span class="p">(</span><span class="n">method</span> <span class="o">=</span> <span class="sh">'</span><span class="s">bfill</span><span class="sh">'</span><span class="p">)</span>
+    
+<span class="c1"># Model
+</span><span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">predict</span><span class="p">(</span><span class="n">fut</span><span class="p">)</span> <span class="c1">#[['ds', 'yhat']] 
+</span><span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="p">.</span><span class="nf">to_datetime</span><span class="p">(</span><span class="n">preds</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">])</span>
+    
+<span class="c1"># Output
+</span><span class="n">out</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span><span class="n">test</span><span class="p">[</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">]</span> <span class="o">==</span> <span class="n">sample</span><span class="p">].</span><span class="nf">drop</span><span class="p">(</span><span class="sh">'</span><span class="s">item</span><span class="sh">'</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>    
+<span class="n">out</span> <span class="o">=</span> <span class="n">out</span><span class="p">.</span><span class="nf">merge</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="sh">'</span><span class="s">left</span><span class="sh">'</span><span class="p">,</span> <span class="n">on</span> <span class="o">=</span> <span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">).</span><span class="nf">rename</span><span class="p">({</span><span class="sh">'</span><span class="s">yhat</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">},</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="c1">#.drop(['ds', 'oil', 'onpromotion'], axis = 1)
+</span></code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>14:13:53 - cmdstanpy - INFO - Chain [1] start processing
+14:13:53 - cmdstanpy - INFO - Chain [1] done processing
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Examining Outputs for </span><span class="si">{</span><span class="n">sample</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    
+<span class="n">model</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Examining Outputs for 29_PET SUPPLIES
+</code></pre></div></div>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_38_1.png" alt="png" /></p>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_38_2.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span><span class="p">.</span><span class="nf">plot_components</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_39_0.png" alt="png" /></p>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_39_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">print</span><span class="p">(</span><span class="sh">'</span><span class="s">Showing Time Series for Model: </span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Showing Time Series for Model: 
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span><span class="p">.</span><span class="nf">head</span><span class="p">()</span>
+</code></pre></div></div>
+
+<div>
+<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>date</th>
+      <th>store_nbr</th>
+      <th>family</th>
+      <th>onpromotion_x</th>
+      <th>ds</th>
+      <th>trend</th>
+      <th>yhat_lower</th>
+      <th>yhat_upper</th>
+      <th>trend_lower</th>
+      <th>...</th>
+      <th>weekly</th>
+      <th>weekly_lower</th>
+      <th>weekly_upper</th>
+      <th>yearly</th>
+      <th>yearly_lower</th>
+      <th>yearly_upper</th>
+      <th>multiplicative_terms</th>
+      <th>multiplicative_terms_lower</th>
+      <th>multiplicative_terms_upper</th>
+      <th>sales</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3001607</td>
+      <td>2017-08-16</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-16</td>
+      <td>7.514397</td>
+      <td>4.404190</td>
+      <td>8.789459</td>
+      <td>7.514397</td>
+      <td>...</td>
+      <td>-0.199900</td>
+      <td>-0.199900</td>
+      <td>-0.199900</td>
+      <td>-0.229431</td>
+      <td>-0.229431</td>
+      <td>-0.229431</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>6.625475</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>3003389</td>
+      <td>2017-08-17</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-17</td>
+      <td>7.520778</td>
+      <td>4.404179</td>
+      <td>8.655474</td>
+      <td>7.520778</td>
+      <td>...</td>
+      <td>-0.343361</td>
+      <td>-0.343361</td>
+      <td>-0.343361</td>
+      <td>-0.181378</td>
+      <td>-0.181378</td>
+      <td>-0.181378</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>6.541952</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3005171</td>
+      <td>2017-08-18</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-18</td>
+      <td>7.527158</td>
+      <td>4.113727</td>
+      <td>8.530878</td>
+      <td>7.527158</td>
+      <td>...</td>
+      <td>-0.558148</td>
+      <td>-0.558148</td>
+      <td>-0.558148</td>
+      <td>-0.131434</td>
+      <td>-0.131434</td>
+      <td>-0.131434</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>6.414476</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3006953</td>
+      <td>2017-08-19</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-19</td>
+      <td>7.533539</td>
+      <td>5.316851</td>
+      <td>9.693612</td>
+      <td>7.533539</td>
+      <td>...</td>
+      <td>0.510069</td>
+      <td>0.510069</td>
+      <td>0.510069</td>
+      <td>-0.080453</td>
+      <td>-0.080453</td>
+      <td>-0.080453</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>7.515592</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3008735</td>
+      <td>2017-08-20</td>
+      <td>29</td>
+      <td>PET SUPPLIES</td>
+      <td>0</td>
+      <td>2017-08-20</td>
+      <td>7.539920</td>
+      <td>5.291586</td>
+      <td>9.929054</td>
+      <td>7.539920</td>
+      <td>...</td>
+      <td>0.736900</td>
+      <td>0.736900</td>
+      <td>0.736900</td>
+      <td>-0.029338</td>
+      <td>-0.029338</td>
+      <td>-0.029338</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>7.799919</td>
+    </tr>
+  </tbody>
+</table>
+<p>5 rows × 345 columns</p>
+</div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">out</span><span class="p">.</span><span class="n">shape</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(16, 345)
+</code></pre></div></div>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="p">.</span><span class="nf">subplots</span><span class="p">()</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">],</span> <span class="n">trainingdata</span><span class="p">[</span><span class="sh">'</span><span class="s">y</span><span class="sh">'</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="sh">'</span><span class="s">dodgerblue</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="p">.</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">.</span><span class="nf">scatter</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">ds</span><span class="sh">'</span><span class="p">],</span> <span class="n">out</span><span class="p">[</span><span class="sh">'</span><span class="s">sales</span><span class="sh">'</span><span class="p">],</span> <span class="n">color</span> <span class="o">=</span> <span class="sh">'</span><span class="s">red</span><span class="sh">'</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="p">.</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Count of Item</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Date</span><span class="sh">'</span><span class="p">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Text(0.5, 0, 'Date')
+</code></pre></div></div>
+
+<p><img src="prophet-store-sales-forecasting_files/prophet-store-sales-forecasting_43_1.png" alt="png" /></p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+</code></pre></div></div>
+
+  </div><a class="u-url" href="/2024/12/05/prophet-store-sales-forecasting.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col">
+        <p class="feed-subscribe">
+          <a href="http://localhost:4000/feed.xml">
+            <svg class="svg-icon orange">
+              <use xlink:href="/assets/minima-social-icons.svg#rss"></use>
+            </svg><span>Subscribe</span>
+          </a>
+        </p>
+      </div>
+      <div class="footer-col">
+        <p>A resume site showing the data scientists portfolio</p>
+      </div>
+    </div>
+
+    <div class="social-links"><ul class="social-media-list"></ul>
+</div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
