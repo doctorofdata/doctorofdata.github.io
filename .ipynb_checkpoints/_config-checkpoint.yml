@@ -22,7 +22,7 @@ title: Zan Sadiq
 email: dataguy50@gmail.com
 description: #>- # this means to ignore newlines until "baseurl:"
   A resume site showing the data scientists portfolio
-baseurl: "" # the subpath of your site, e.g. /blog
+#baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://doctorofdata.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 github_username:  doctorofdata
 
