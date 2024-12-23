@@ -3,6 +3,7 @@
 # To modify the layout, see https://jekyllrb.com/docs/themes/#overriding-theme-defaults
 
 layout: page
+title: Home
 ---
 
 Hello! My name is Zan Sadiq, and I am a data scientist :) 
