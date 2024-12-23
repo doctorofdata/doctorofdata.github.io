@@ -5,8 +5,6 @@
 layout: page
 ---
 
-# A Data Scientist
-
 Hello! My name is Zan Sadiq, and I am a data scientist :) 
 
 Welcome to my resume and portfolio. 
