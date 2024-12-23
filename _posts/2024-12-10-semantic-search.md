@@ -4,7 +4,7 @@ title:  "Using Semantic Re-Ranking to Improve Results w/ Semantic Search"
 excerpt_separator: <!--more-->
 ---
 
-This demonstration involves using a technique called semantic re-ranking as a means for improving the search relevance of results retuned using the Wayfair WANDS dataset as a benchmark for accuracy.
+This demonstration involves using a technique called semantic re-ranking as a means for improving the search relevance of results returned using the Wayfair WANDS dataset as a benchmark for accuracy.
 
 <!--more-->
 
