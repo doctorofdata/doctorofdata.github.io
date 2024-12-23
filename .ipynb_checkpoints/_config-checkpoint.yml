@@ -57,3 +57,6 @@ minima:
 # Configure excerpts on posts
 show_excerpts: true
 permalink: /blog/:title
+
+# Tracking traffic
+google_analytics: G-3EY4EYKKJP
