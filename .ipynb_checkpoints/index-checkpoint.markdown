@@ -4,3 +4,11 @@
 
 layout: home
 ---
+
+# A Data Scientist
+
+Hello! My name is Zan Sadiq, and I am a data scientist :) 
+
+Welcome to my resume and portfolio. 
+
+This project is hosted with Github Pages and contains a blog of data science projects that I have worked on regarding relevant topics in industry. Please enjoy and feel free to reach out with any comments or questions!
