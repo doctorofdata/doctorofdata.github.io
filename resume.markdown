@@ -4,8 +4,6 @@ title: Resume
 permalink: /resume/
 ---
 
-# **<center style = "color: dodgerblue;">Zan Sadiq</center>**
-
 <p align = 'center'><img src = '/assets/images/supersuit.png' height = '150' width = '150'/></p>
 
 ---
