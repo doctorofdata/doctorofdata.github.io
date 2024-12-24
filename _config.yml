@@ -22,7 +22,7 @@ title: Zan Sadiq
 author:
   name: Zan Sadiq
   email: dataguy50@gmail.com
-description: #>- # this means to ignore newlines until "baseurl:"
+description: #>- # this means to ignore newlines until "baseurl:" 
   A resume site showing the data scientists portfolio
 #baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://doctorofdata.github.io" # the base hostname & protocol for your site, e.g. http://example.com
@@ -60,12 +60,12 @@ social_links:
   #  - { platform: dribbble,       user_url: "https://dribbble.com/jekyll" }
   #  - { platform: facebook,       user_url: "https://www.facebook.com/jekyll" }
   #  - { platform: flickr,         user_url: "https://www.flickr.com/photos/jekyll" }
-    - { platform: github,         user_url: "https://github.com/doctorofdata/" }
+#     - { platform: github, user_url: "https://github.com/doctorofdata/" }
   #  - { platform: gitlab,         user_url: "https://gitlab.com/jekyll" }
   #  - { platform: google_scholar, user_url: "https://scholar.google.com/citations?user=qc6CJjYAAAAJ" }
-    - { platform: instagram,      user_url: "https://www.instagram.com/theamateurdoghandler" }
+#     - { platform: instagram, user_url: "https://www.instagram.com/theamateurdoghandler" }
   #  - { platform: keybase,        user_url: "https://keybase.io/jekyll" }
-    - { platform: linkedin,       user_url: "https://www.linkedin.com/in/zan-sadiq" }
+#     - { platform: linkedin, user_url: "https://www.linkedin.com/in/zan-sadiq" }
   #  - { platform: microdotblog,   user_url: "https://micro.blog/jekyll" }
   #  - { platform: pinterest,      user_url: "https://www.pinterest.com/jekyll" }
   #  - { platform: stackoverflow,  user_url: "https://stackoverflow.com/users/1234567/jekyll" }

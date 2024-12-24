@@ -24,7 +24,7 @@ permalink: /resume/
 > ***M.Sc. Data Science***, <span style = "color:gray">The University of Texas at Dallas, May 2018</span>
 > <details style = "color:gray"><summary>Featured Graduate Coursework</summary>
 >         <ul>
->             <li>Business Analytics</li>
+>            <li>Business Analytics</li>
 >            <li>Advanced Business Analytics</li>
 >            <li>Programming for Data Science</li>
 >            <li>Applied Machine Learning</li>

@@ -1,28 +1,63 @@
 <footer class = "site-footer h-card">
-    
+
+  <link href = "//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel = "stylesheet">
+
   <data class = "u-url" href = "{{ "/" | relative_url }}"></data>
 
   <div class = "wrapper">
 
     <div class = "footer-col-wrapper">
+      
+        <div class = "footer-col">
         
-      <div class = "footer-col">
+            {%- if site.author %}    
+       
+            <ul class = "contact-list">
           
-      {%- if social_links %}
+                {% if site.author.name -%}
+            
+                <li class = "p-name">{{ site.author.name | escape }}</li>
           
-        <ul class = "contact-list">
-            
-          {% if social_links.platform.github -%}
-            
-            <li><a class = "u-email" href = "mailto:{{ site.author.email }}">{{ site.author.email }}</a></li>
-            
-          {%- endif %}
-            
-        </ul>
-      {%- endif %}
-          
-      </div>
+                {% endif -%}
         
+            </ul>
+      
+            {%- endif %}
+      
+        </div>
+      
+        <div class = "footer-col">
+        
+            <p>{{ site.description | escape }}</p>
+     
+        </div>
+   
+    </div>
+
+    <div class = "social-links">
+
+        <strong> My social links- </strong>
+        
+        {% if site.data.social-media %}
+        
+            {% assign sm = site.data.social-media %}
+    
+            {% for entry in sm %}
+        
+            {% assign key = entry | first %}
+        
+            {% if sm[key].id %}
+            
+                    <a href = "{{ sm[key].href }}{{ sm[key].id }}" title = "{{ sm[key].title }}"><i class = "{{ sm[key].fa-icon }}"></i></a>
+        
+            {% endif %}
+    
+        {% endfor %}
+
+        </div>
+
+        {% endif %}
+
     </div>
 
   </div>
