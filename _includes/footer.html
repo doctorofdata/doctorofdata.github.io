@@ -10,33 +10,7 @@
       
         <div class = "footer-col">
         
-            {%- if site.author %}    
-       
-            <ul class = "contact-list">
-          
-                {% if site.author.name -%}
-            
-                <li class = "p-name">{{ site.author.name | escape }}</li>
-          
-                {% endif -%}
-        
-            </ul>
-      
-            {%- endif %}
-      
-        </div>
-      
-        <div class = "footer-col">
-        
-            <p>{{ site.description | escape }}</p>
-     
-        </div>
-   
-    </div>
-
-    <div class = "social-links">
-
-        <strong> My social links- </strong>
+            <strong> My social links- </strong>
         
         {% if site.data.social-media %}
         
@@ -53,10 +27,18 @@
             {% endif %}
     
         {% endfor %}
-
+      
         </div>
+      
+        <div class = "footer-col">
+        
+            <p>{{ site.description | escape }}</p>
+     
+        </div>
+   
+    </div>
 
-        {% endif %}
+    {% endif %}
 
     </div>
 
