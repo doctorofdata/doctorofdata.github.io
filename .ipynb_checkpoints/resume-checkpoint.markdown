@@ -21,6 +21,9 @@ permalink: /resume/
 
 ## 🏫 **Education**
 
+> ***Artificial Intelligence Bootcamp***,
+> <span style = "color:gray">NYC Data Science Academy, May 2025</span>
+
 > ***M.Sc. Data Science***, <span style = "color:gray">The University of Texas at Dallas, May 2018</span>
 > <details style = "color:gray"><summary>Featured Graduate Coursework</summary>
 >         <ul>
