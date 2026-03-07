@@ -2,20 +2,6 @@
 
 [Eleventy LibDoc website](https://eleventy-libdoc.netlify.app/) | [11ty website](11ty)
 
-Eleventy LibDoc is an easy to use and content focused starter project for [Eleventy][11ty] to craft slick and responsive documentation. It was was developed with accessibility awareness and low-tech mindset which allows to reach good page speed performances. It contains vanilla JS self-made components like search, primary navigation, table of content, code highlighting and sandboxes. Every page created with LibDoc is printable and can work properly even without Javascript by maintaining only essential features.
-
-[![Netlify Status](https://api.netlify.com/api/v1/badges/d1986dbf-2272-4614-8dec-c228ba4699ef/deploy-status)](https://app.netlify.com/sites/11ty-libdoc-blank/deploys)
-
-![LibDoc’s interface with both light and dark modes](https://github.com/user-attachments/assets/91e7eb6d-8089-40b7-94e4-4fd970073c8d)
-
-<img width="1471" height="625" alt="image" src="https://github.com/user-attachments/assets/9af60d6f-8d5b-463e-9570-b5a6e54a8515" />
-<img width="1461" height="617" alt="image" src="https://github.com/user-attachments/assets/f37bbe07-f65a-4a4f-acb1-6892ec202aac" />
-
-> [!NOTE]
-> Eleventy LibDoc is still under active development and therefore before reaching v1.0.0:
-> * Full backward compatibility is not guaranteed.
-> * Many features are subject to change.
-
 ## Getting started
 
 1. Clone or fork <https://github.com/ita-design-system/eleventy-libdoc>
@@ -52,4 +38,3 @@ Eleventy LibDoc is an easy to use and content focused starter project for [Eleve
     * [Credits](https://eleventy-libdoc.netlify.app/configuration/credits/) <br>LibDoc could not work without these resources.
 
 [11ty]: https://www.11ty.dev/
-# doctorofdata.github.io
