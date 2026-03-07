@@ -1,10 +1,10 @@
 {
     "siteTitle": "The Data Dojo",
-    "siteDescription": "This is the description of my project title",
-    "author": "John Doe",
+    "siteDescription": "A compilation of exploratory data science projects showcasing the author's insight",
+    "author": "Data Guy",
     "faviconUrl": "/assets/myfavicon.png",
     "blogTitle": "Blog",
-    "blogDescription": "Here is the description of the blog part",
+    "blogDescription": "Take a deep dive into the data scientists portfolio, highlighting important business use cases..",
     "productionUrl": "https://eleventy-libdoc.netlify.app",
     "customLinks": [
         {
@@ -12,21 +12,13 @@
             "text": "Atom feed"
         },
         {
-            "url": "https://github.com/ita-design-system/eleventy-libdoc",
+            "url": "https://github.com/doctorofdata",
             "text": "GitHub"
         },
         {
-            "url": "#",
-            "text": "Bluesky"
-        },
-        {
-            "url": "#",
+            "url": "https://www.linkedin.com/in/zan-sadiq",
             "text": "LinkedIn"
         },
-        {
-            "url": "#",
-            "text": "CodePen"
-        }
     ],
-    "editThisPageRootUrl": "https://github.com/ita-design-system/eleventy-libdoc/blob/main"
+    "editThisPageRootUrl": "https://github.com/doctorofdata/doctorofdata.github.io/blob/main"
 }
