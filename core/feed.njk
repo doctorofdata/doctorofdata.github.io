@@ -20,7 +20,7 @@ eleventyExcludeFromCollections: true
         </name>
     </author>
     {%- for post in collections.post | reverse %}
-        {%- set absolutePostUrl %}{{ libdocConfig.productionUrl }}{{ post.url }}{% endset %}
+        {% assign absolutePostUrl = libdocConfig.productionUrl | append: post.url %}
         <entry>
             <title>
                 {%- if post.data.title == '' -%}
