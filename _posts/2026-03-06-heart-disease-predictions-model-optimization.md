@@ -5,6 +5,10 @@ permalink: /posts/2026/03/modeling-heart-disease/
 excerpt_separator: <!--more-->
 ---
 
+In this experiment, we use a python library for optimizing model parameters employed with various machine learning algorithms to maximize their scoring ability on out-of-sample tests to detect heart disease based on metabolic indicators.
+
+<!--more-->
+
 # Machine Learning- An Approach to Choosing Model Parameters <a class = "anchor" id = "top"></a>
 
 Introduction- In this notebook, we will use the Optuna library to conduct experiments which can be used to set model hyperparameters for effectively implementing various machine learning algorithms

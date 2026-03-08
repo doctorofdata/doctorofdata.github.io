@@ -23,7 +23,7 @@ repository               : "doctorofdata/doctorofdata.github.io"
 #               Additional customization can be done by editing /_includes/author-profile.html
 author:
   # Biographic information
-  avatar           : "profile.png"
+  avatar           : "/images/profile.png"
   name             : "Data Guy"
   pronouns         : # example: "she/her"  
   bio              : "The data scientists portfolio showcase and resume!"
@@ -52,7 +52,7 @@ author:
   codepen          : # Username
   dribbble         : # Username
   github           : "doctorofdata"
-  kaggle           : # Username  
+  kaggle           : "deeguy"  
   stackoverflow    : # User number or user number and name (i.e., use "1" or "1/jeff-atwood")    
 
   # Social media

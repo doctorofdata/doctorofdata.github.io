@@ -7,58 +7,92 @@ redirect_from:
   - /resume
 ---
 
-{% include base_path %}
+## <center style = "color: orange;">Skills</center>
 
-Education
-======
-* Ph.D in Version Control Theory, GitHub University, 2018 (expected)
-* M.S. in Jekyll, GitHub University, 2014
-* B.S. in GitHub, GitHub University, 2012
+<p align = "center">
+  <a href = "https://go-skill-icons.vercel.app/">
+    <img src = "https://go-skill-icons.vercel.app/api/icons?i=anaconda,api,apple,aws,bash,chatgpt,gcp,github,python&titles=true" />
+  </a>
+</p>
 
-Work experience
-======
-* Spring 2024: Academic Pages Collaborator
-  * GitHub University
-  * Duties includes: Updates and improvements to template
-  * Supervisor: The Users
+##### *<center> (to name a few..) </center>*
+---
 
-* Fall 2015: Research Assistant
-  * GitHub University
-  * Duties included: Merging pull requests
-  * Supervisor: Professor Hub
+## 🏫 **Education**
 
-* Summer 2015: Research Assistant
-  * GitHub University
-  * Duties included: Tagging issues
-  * Supervisor: Professor Git
-  
-Skills
-======
-* Skill 1
-* Skill 2
-  * Sub-skill 2.1
-  * Sub-skill 2.2
-  * Sub-skill 2.3
-* Skill 3
+> ***Artificial Intelligence Bootcamp***,
+> <span style = "color:gray">NYC Data Science Academy, May 2025</span>
 
-Publications
-======
-  <ul>{% for post in site.publications reversed %}
-    {% include archive-single-cv.html %}
-  {% endfor %}</ul>
-  
-Talks
-======
-  <ul>{% for post in site.talks reversed %}
-    {% include archive-single-talk-cv.html  %}
-  {% endfor %}</ul>
-  
-Teaching
-======
-  <ul>{% for post in site.teaching reversed %}
-    {% include archive-single-cv.html %}
-  {% endfor %}</ul>
-  
-Service and leadership
-======
-* Currently signed in to 43 different slack teams
+> ***M.Sc. Data Science***, <span style = "color:gray">The University of Texas at Dallas, May 2018</span>
+> <details style = "color:gray"><summary>Featured Graduate Coursework</summary>
+>         <ul>
+>            <li>Business Analytics</li>
+>            <li>Advanced Business Analytics</li>
+>            <li>Programming for Data Science</li>
+>            <li>Applied Machine Learning</li>
+>            <li>Econometrics and Time Series Analysis</li>
+>            <li>Quantitative Foundations of Business</li>
+>            <li>Marketing Predictive Analytics</li>
+>        </ul>
+>   </details>
+
+> ***B.A. Government***,
+>  <span style = "color:gray">The University of Texas at Austin, December 2013</span>
+
+---
+
+> ## **Accomplishments** 🏆
+> <details> <summary> 1st place, TI Marketing Analytics Competition</summary> ☑️ Developed custom segmentation algorithm and optimized prices to maximize revenue </details>
+> <details> <summary> Cryptocurrency trade model showcased for Industry Advisory Board at UT Dallas</summary> ₿ Recommended user actions based on 24-hour cryptocurrency trading activities collected by user-built scraper </details>
+> <details> <summary> Developed an apriori, market-basket, recommendation engine</summary> 🤖 For production implementation within a customer-facing iOS application to provide suggestions to consumers as they shop  </details>
+
+---
+
+## 💼 **Experience**
+
+> <div class = 'job'>
+>    <div class = 'logo'><img src = 'https://yt3.googleusercontent.com/qGIWS9n3oXeHl-tPh4HMAKTX4rjsHMd6c2VrLipt2wJXlS9oQiuDODvxsYi0i1XP176JAII17cg=s900-c-k-c0x00ffffff-no-rj' height = '50' width = '50'/></div>
+>    <div class = 'title'><strong>Senior Data Scientist</strong></div>
+>    <div class = 'dates' style = "color:gray"><em>November 2022 - May 2024</em></div>
+>    <div class = 'duties'><ul>
+>                                <li>Vice President of Enterprise Architecture Transformation & Implementation</li>
+>                                <li>Worked with team to develop an LLM application allowing end-users to query a neo4j database of operating facts in natural language</li>
+>                                <li>Developed an NLP pipeline to classify business artifacts according to a process taxonomy with 600+ outcomes</li>
+>                                <li>Created an engine to lookup search queries and match them against reference libraries using semantic similarity </li>
+>                          </ul>
+>    </div>
+> </div>
+
+> <div class = 'job'>
+>    <div class = 'logo'><img src = 'https://s3-eu-west-1.amazonaws.com/tpd/logos/46f40d880000640005019648/0x0.png' height = '50' width = '50'/></div>
+>    <div class = 'title'><strong>Senior Data Scientist</strong></div>
+>    <div class = 'dates' style = "color:gray"><em>January 2022 - November 2022</em></div>
+>    <div class = 'duties'><ul>
+>                                <li>Operated on the Cybersecurity, InfoSec, Risk Analytics team fostering initiatives to develop enterprise ability to distinguish external threats</li>
+>                                <li>Built a novel pipeline to detect activity committed by fraudulent entities on FedEx Delivery Manager application</li>
+>                          </ul>
+>    </div>
+> </div>
+
+> <div class = 'job'>
+>    <div class = 'logo'><img src = 'https://www.gesi.org/wp-content/uploads/2024/08/purepng.com-ibm-logologobrand-logoiconslogos-251519939176ka7y8.png' height = '50' width = '50'/></div>
+>    <div class = 'title'><strong>Data Scientist</strong></div>
+>    <div class = 'dates' style = "color:gray"><em>September 2019 - June 2021</em></div>
+>    <div class = 'duties'><ul>
+>                                <li>Doubled the performance of a model used to detect fraud in the automobile insurance industry for the Financial Crimes Investigation team</li>
+>                                <li>Created a production system to forecast seasonal sales trends by product for a retailer working with the Data Science Elite team</li>
+>                                <li>Worked on the CloudPak Acceleration Team to help foster data science initiatives developed in private, hybrid cloud environments</li>
+>                          </ul>
+>    </div>
+> </div>
+
+> <div class = 'job'>
+>    <div class = 'logo'><img src = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSO9ZiUp-Lk56FE7YOWrthGxJlKKAehVVAS8w&s' height = '50' width = '50'/></div>
+>    <div class = 'title'><strong>Data Scientist</strong></div>
+>    <div class = 'dates' style = "color:gray"><em>May 2018 - September 2019</em></div>
+>    <div class = 'duties'><ul>
+>                                <li>Created production models to forecast rates of attrition and predict employee churn</li>
+>                                <li>Conducted advanced NLP analysis and visualization on applicant resumes from the Toyota portal to inspect and understand hiring patterns and causal factors benefiting cultural fit</li>
+>                          </ul>
+>    </div>
+> </div>
