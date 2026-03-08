@@ -16,6 +16,11 @@ Getting Started-
 Here is an overview of the data science life cycle, for starters!
 
 ```mermaid
+    graph LR
+    A-->B
+    ```
+    
+```mermaid
 
 A[Raw Data] --> B[Data Preprocessing]
 
