@@ -11,12 +11,19 @@ redirect_from:
 
 Hi! <br>I am the data guy and I am a data scientist with a passion for big data and machine learning. <br>In my free time, I love to undertake popular experiments in data science to sharpen my skills and knowledge base. I have documented that journey here in python using a series of informative Jupyter notebooks. Feel free to explore them in the blog!
 
-Getting Started- 
+---
 
-Here is an overview of the data science life cycle, for starters!
+# 🌌 Getting Started- The Data Science Galaxy
+
+---
+
+Welcome to the universe of modern data science which spans mathematics, machine learning, engineering, and production systems.
+
+Below is a conceptual map of the ecosystem.
 
 ```mermaid
 flowchart TD
+
 A[Raw Data] --> B[Data Preprocessing]
 
 B --> C1[Handle Missing Values]
