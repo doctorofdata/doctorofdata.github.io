@@ -16,6 +16,7 @@ Getting Started-
 Here is an overview of the data science life cycle, for starters!
 
 ```mermaid
+
 A[Raw Data] --> B[Data Preprocessing]
 
 B --> C1[Handle Missing Values]
@@ -41,6 +42,7 @@ I --> K
 J --> K
 
 K --> L[Prediction Engine]
+
 ```
 
 In our blog we will cover various topics within this pipeline to further elucidate the lifecycle!
