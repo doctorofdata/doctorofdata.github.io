@@ -1,6 +1,6 @@
 ---
 title: 'Graphing Netflix Social Networks in Python'
-date: 2026-03-015
+date: 2026-03-15
 permalink: /posts/2026/03/graphing-movie-networks/
 excerpt_separator: <!--more-->
 ---
