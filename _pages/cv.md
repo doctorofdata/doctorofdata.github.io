@@ -2,6 +2,7 @@
 layout: cv-layout
 title: "The Data Guy - CV"
 permalink: /cv/
+author_profile: true
 redirect_from:
   - /resume
 ---
