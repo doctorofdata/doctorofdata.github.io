@@ -13,7 +13,6 @@ layout: compress
     <title>{% if page.title %}{{ page.title | escape }}{% else %}{{ site.title | escape }}{% endif %} | {{ site.name | default: site.title }}</title>
     {% include head.html %}
     {% include head/custom.html %}
-    <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/main.css">
   </head>
 
   <body class="cv-layout">
@@ -22,9 +21,14 @@ layout: compress
 
     <div id="main" role="main">
       {% include sidebar.html %}
-      <div class="container">
-        {{ content }}
-      </div>
+
+      <article class="page">
+        <div class="page__inner-wrap">
+          <section class="page__content">
+            {{ content }}
+          </section>
+        </div>
+      </article>
     </div>
 
     <div class="page__footer">
@@ -35,6 +39,5 @@ layout: compress
     </div>
 
     {% include scripts.html %}
-
   </body>
 </html>
