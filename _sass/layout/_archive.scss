@@ -1,30 +1,9 @@
-/* ==========================================================================
-   ARCHIVE
+/*
+   Archive
    ========================================================================== */
 
 .archive {
   margin-bottom: 2em;
-
-  @include breakpoint($medium) {
-    @include span(12 of 12);
-  }
-
-  @include breakpoint($large) {
-    @include span(10 of 12 last);
-    @include prefix(0.5 of 12);
-  }
-
-  a {
-    text-decoration: underline;
-
-    &:hover {
-      text-decoration: underline;
-
-      img {
-        box-shadow: 0 0 10px rgba(#000, 0.25);
-      }
-    }
-  }
 }
 
 .archive__subtitle {
@@ -33,28 +12,10 @@
   font-size: $type-size-5;
   color: var(--global-text-color-light);
   border-bottom: 1px solid var(--global-border-color);
-
-  + .list__item .archive__item-title {
-    margin-top: 0.5em;
-  }
 }
 
 .archive__item-title {
-  margin-bottom: 0.25em;
-  font-family: $sans-serif-narrow;
-
-  a + a {
-    opacity: 0.5;
-  }
-}
-
-/* remove border*/
-.page__content {
-
-  .archive__item-title {
-    margin-top: 1em;
-    border-bottom: none;
-  }
+  margin-top: 0;
 }
 
 .archive__item-excerpt {
@@ -69,9 +30,53 @@
 .archive__item-teaser {
   border-radius: $border-radius;
   overflow: hidden;
+
   img {
     width: 100%;
   }
+}
+
+/* =========================================================
+   Inline thumbnail on the right for LIST excerpts
+   ========================================================= */
+
+.archive__item-summary {
+  margin-top: 0.25rem;
+
+  @include breakpoint($small) {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+.archive__item-summary-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.archive__item-thumb {
+  flex: 0 0 auto;
+
+  @include breakpoint($small) {
+    width: 160px; /* thumbnail width on list/archive pages */
+  }
+}
+
+.archive__item-thumb-link {
+  display: block;
+}
+
+.archive__item-thumb-img {
+  display: block;
+
+  /* override global img { width: 100% } rules */
+  width: 160px;
+  max-width: 100%;
+
+  height: auto;
+  border-radius: $border-radius;
+  object-fit: cover;
 }
 
 .archive__item:hover {
@@ -130,6 +135,7 @@
 
   @include breakpoint($small) {
     @include gallery(5 of 10);
+
     .archive__item-teaser {
       max-height: 200px;
     }
@@ -232,13 +238,13 @@
       text-align: center;
 
       .archive__item-teaser {
-        margin: 0 auto;
-        width: span(5 of 12);
+        @include span(5 of 12);
+        @include push(3.5 of 12);
       }
 
       .archive__item-body {
-        margin: 0 auto;
-        width: span(7 of 12);
+        @include span(7 of 12);
+        @include push(2.5 of 12);
       }
     }
   }
