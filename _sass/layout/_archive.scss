@@ -96,6 +96,15 @@
   object-fit: cover;
 }
 
+.archive__item-thumb {
+  flex: 0 1 220px;
+  max-width: 220px;
+}
+
+.archive__item-thumb-img {
+  width: 100%;
+  max-width: 220px;
+}
 
 /*
    List view
