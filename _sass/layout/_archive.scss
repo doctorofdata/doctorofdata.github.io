@@ -38,55 +38,49 @@
 
 /* =========================================================
    Inline thumbnail on the right for LIST excerpts
+   (Must not break the #main float layout)
    ========================================================= */
 
 .archive__item-summary {
   margin-top: 0.25rem;
 
+  /* critical: do not allow this row to exceed container width */
+  max-width: 100%;
+
   @include breakpoint($small) {
     display: flex;
     align-items: flex-start;
+    justify-content: space-between;
     gap: 1rem;
   }
 }
 
 .archive__item-summary-text {
+  /* critical for flex overflow bugs */
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .archive__item-thumb {
-  flex: 0 0 auto;
-
-  @include breakpoint($small) {
-    width: 160px; /* thumbnail width on list/archive pages */
-  }
+  flex: 0 1 160px; /* shrinkable: can get smaller if space is tight */
+  max-width: 160px;
 }
 
 .archive__item-thumb-link {
   display: block;
+  max-width: 100%;
 }
 
 .archive__item-thumb-img {
   display: block;
 
-  /* override global img { width: 100% } rules */
-  width: 160px;
-  max-width: 100%;
+  /* critical: never force layout wider than container */
+  width: 100%;
+  max-width: 160px;
 
   height: auto;
   border-radius: $border-radius;
   object-fit: cover;
-}
-
-.archive__item:hover {
-  .archive__item-teaser {
-    box-shadow: 0 0 10px rgba(#000, 0.25);
-  }
-
-  .archive__item-title {
-    text-decoration: underline;
-  }
 }
 
 
