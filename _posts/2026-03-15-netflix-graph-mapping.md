@@ -845,12 +845,6 @@ The result is a set of smooth, high-level *flow corridors* that reveal the domin
 ```python
 cd = circular
 fd = forcedirected
-
-# Compile the plots
-cd_d = graphplot(cd, connect_edges(cd, edges), "Circular layout")
-fd_d = graphplot(fd, connect_edges(fd, edges), "Force-directed")
-cd_b = graphplot(cd, hammer_bundle(cd, edges), "Circular layout, bundled")
-fd_b = graphplot(fd, hammer_bundle(fd, edges), "Force-directed, bundled")
 ```
 
     CPU times: user 245 ms, sys: 0 ns, total: 245 ms
@@ -865,7 +859,11 @@ fd_b = graphplot(fd, hammer_bundle(fd, edges), "Force-directed, bundled")
 
 
 ```python
-show_ds_images(images = [cd_d,fd_d, cd_b, fd_b], titles = ['Circular Layout', 'Force-Directed', 'Circular Layout, Bundled', 'Force-Directed Layout, Bundled'], ncols = 2)
+show_ds_images(images = [graphplot(cd, connect_edges(cd, edges), "Circular layout"),
+                         graphplot(fd, connect_edges(fd, edges), "Force-directed"),
+                         graphplot(cd, hammer_bundle(cd, edges), "Circular layout, bundled"),
+                         graphplot(fd, hammer_bundle(fd, edges), "Force-directed, bundled")],
+               titles = ['Circular Layout', 'Force-Directed', 'Circular Layout, Bundled', 'Force-Directed Layout, Bundled'], ncols = 2)
 ```
 
 
@@ -1628,15 +1626,10 @@ fd = forcedirectedloc
 
 
 ```python
-cd_d = graphplot(cd, connect_edges(cd, filtered_people_edges), "Filtered Netflix Social Network: Circular Layout")
-cd_d = graphplot(fd, connect_edges(fd, filtered_people_edges), "Filtered Netflix Social Network: Force-Directed Layout")
-cd_b = graphplot(cd, hammer_bundle(cd, filtered_people_edges), "Filtered Netflix Social Network: Circular Layout, Bundled")
-fd_b = graphplot(fd, hammer_bundle(fd, filtered_people_edges), "Filtered Netflix Social Network: Force-Directed Layout, Bundled")
-
-show_ds_images(images = [cd_d,
-                         fd_d,
-                         cd_b,
-                         fd_b],
+show_ds_images(images = [graphplot(cd, connect_edges(cd, filtered_people_edges), "Filtered Netflix Social Network: Circular Layout"),
+                         graphplot(fd, connect_edges(fd, filtered_people_edges), "Filtered Netflix Social Network: Force-Directed Layout"),
+                         graphplot(cd, hammer_bundle(cd, filtered_people_edges), "Filtered Netflix Social Network: Circular Layout, Bundled"),
+                         graphplot(fd, hammer_bundle(fd, filtered_people_edges), "Filtered Netflix Social Network: Force-Directed Layout, Bundled")],
                titles = ["Filtered Netflix Social Network: Circular Layout",
                          "Filtered Netflix Social Network: Force-Directed Layout",
                          "Filtered Netflix Social Network: Circular Layout, Bundled",
@@ -1769,16 +1762,7 @@ plot_colortable(hex_colors)
 
 
 ```python
-fd_b = graphplot(forcedirectedloc, hammer_bundle(forcedirectedloc, filtered_people_edges), "Filtered Netflix: Communities, Force-Directed Bundled", cat = 'community')
-```
-
-    CPU times: user 10.4 s, sys: 4.41 s, total: 14.8 s
-    Wall time: 14.9 s
-
-
-
-```python
-show_ds_images(images = [fd_b],
+show_ds_images(images = [graphplot(forcedirectedloc, hammer_bundle(forcedirectedloc, filtered_people_edges), "Filtered Netflix: Communities, Force-Directed Bundled", cat = 'community')],
                titles = ['Filtered Netflix Social Network, Weighted and Bundled'],
                ncols = 1,
                fig_width = 10)
@@ -2099,16 +2083,7 @@ filtered_nodes['community'] = filtered_nodes['community'].cat.remove_unused_cate
 
 
 ```python
-fd_b = graphplot(fd_filtered, hammer_bundle(fd_filtered_xy, filtered_edges), "Netflix Universe: Top Individuals by Community", cat = 'community')
-```
-
-    CPU times: user 2.11 s, sys: 224 ms, total: 2.33 s
-    Wall time: 2.33 s
-
-
-
-```python
-show_ds_images(images = [fd_b], titles = ['Filtered Edges w/ Important Communities'], ncols = 1, fig_width = 10)
+show_ds_images(images = [graphplot(fd_filtered, hammer_bundle(fd_filtered_xy, filtered_edges), "Netflix Universe: Top Individuals by Community", cat = 'community')], titles = ['Filtered Edges w/ Important Communities'], ncols = 1, fig_width = 10)
 ```
 
 
