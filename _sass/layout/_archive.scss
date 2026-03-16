@@ -256,3 +256,16 @@
     }
   }
 }
+
+.archive {
+  margin-bottom: 2em;
+
+  @include breakpoint($large) {
+    @include span(10 of 12 last);
+  }
+
+  /* Optional: a little breathing room between sidebar and content */
+  @media screen and (min-width: $sidebar-screen-min-width) {
+    padding-left: calc(#{$sidebar-link-max-width} + 1rem);
+  }
+}
