@@ -159,6 +159,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from PIL import Image as PILImage
 import gc
+from IPython.display import display, Image
+import io
 ```
 
 
@@ -530,7 +532,12 @@ def show_ds_images(images, titles, ncols = 2, fig_width = 18, cell_px = 800, bg 
         ax.set_visible(False)
 
     plt.subplots_adjust(wspace = 0.04, hspace = 0.12)
-    plt.show()
+    buf = io.BytesIO()
+    plt.savefig(buf, format = 'png', bbox_inches = 'tight', facecolor = bg)
+    plt.close()
+    buf.seek(0)
+    display(Image(data = buf.read()))
+    buf.close()
 
 def normalise_layout(df, margin = 0.05):
 
