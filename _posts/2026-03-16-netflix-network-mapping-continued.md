@@ -1,11 +1,13 @@
 ---
 title: 'Comprehensive Network Mapping of Netflix in Python - Part II'
 date: 2026-03-16
+header:
+  teaser: networking-mind-map.png
 permalink: /posts/2026/03/comprehensive-networking-walkthrough/
 excerpt_separator: <!--more-->
 ---
 
-In this post, we use a dataset posted on Kaggle as fodder for creating a vast network of communities of actors and directors spread around the world!
+This post is a continuation of the previous in which we used a dataset posted on Kaggle as fodder for creating a vast network of communities of actors and directors spread around the world! In this post we will explore the network dynamics of that information.
 
 <!--more-->
 
