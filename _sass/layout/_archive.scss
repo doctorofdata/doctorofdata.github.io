@@ -5,9 +5,13 @@
 .archive {
   margin-bottom: 2em;
 
-  /* FIX: ensure archive content sits to the right of the left sidebar on desktop */
+  @include breakpoint($medium) {
+    @include span(12 of 12);
+  }
+
   @include breakpoint($large) {
     @include span(10 of 12 last);
+    @include prefix(0.5 of 12);
   }
 }
 
