@@ -4,6 +4,11 @@
 
 .archive {
   margin-bottom: 2em;
+
+  /* FIX: ensure archive content sits to the right of the left sidebar on desktop */
+  @include breakpoint($large) {
+    @include span(10 of 12 last);
+  }
 }
 
 .archive__subtitle {
@@ -36,19 +41,6 @@
   }
 }
 
-/*
-   Archive
-   ========================================================================== */
-
-.archive {
-  margin-bottom: 2em;
-
-  /* FIX: ensure archive content sits to the right of the left sidebar on desktop */
-  @include breakpoint($large) {
-    @include span(10 of 12 last);
-  }
-}
-
 /* =========================================================
    Inline thumbnail on the right for LIST excerpts
    (Must not break the #main float layout)
@@ -56,8 +48,6 @@
 
 .archive__item-summary {
   margin-top: 0.25rem;
-
-  /* critical: do not allow this row to exceed container width */
   max-width: 100%;
 
   @include breakpoint($small) {
@@ -69,13 +59,12 @@
 }
 
 .archive__item-summary-text {
-  /* critical for flex overflow bugs */
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .archive__item-thumb {
-  flex: 0 1 160px; /* shrinkable: can get smaller if space is tight */
+  flex: 0 1 160px;
   max-width: 160px;
 }
 
@@ -86,11 +75,8 @@
 
 .archive__item-thumb-img {
   display: block;
-
-  /* critical: never force layout wider than container */
   width: 100%;
   max-width: 160px;
-
   height: auto;
   border-radius: $border-radius;
   object-fit: cover;
@@ -253,18 +239,5 @@
         @include push(2.5 of 12);
       }
     }
-  }
-}
-
-.archive {
-  margin-bottom: 2em;
-
-  @include breakpoint($large) {
-    @include span(10 of 12 last);
-  }
-
-  /* Optional: a little breathing room between sidebar and content */
-  @media screen and (min-width: $sidebar-screen-min-width) {
-    padding-left: calc(#{$sidebar-link-max-width} + 1rem);
   }
 }
