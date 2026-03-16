@@ -4,6 +4,13 @@ date: 2026-03-16
 header:
   teaser: networking-mind-map.png
 permalink: /posts/2026/03/comprehensive-networking-walkthrough/
+tags:
+  - graph-analytics
+  - network-analysis
+  - data-visualization
+  - exploratory-data-analysis
+  - python
+  - netflix
 excerpt_separator: <!--more-->
 ---
 

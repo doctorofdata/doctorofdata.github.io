@@ -2,6 +2,17 @@
 title: 'Modeling Heart Disease with AI'
 date: 2026-03-08
 permalink: /posts/2026/03/modeling-heart-disease/
+tags:
+  - machine-learning
+  - healthcare
+  - classification
+  - model-evaluation
+  - hyperparameter-tuning
+  - optimization
+  - feature-engineering
+  - python
+  - scikit-learn
+  - optuna
 excerpt_separator: <!--more-->
 ---
 
