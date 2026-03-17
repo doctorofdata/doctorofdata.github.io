@@ -2,6 +2,8 @@
 title: 'Modeling Heart Disease with AI'
 date: 2026-03-08
 permalink: /posts/2026/03/modeling-heart-disease/
+header:
+  teaser: heart-disease-infographic.png
 tags:
   - machine-learning
   - healthcare

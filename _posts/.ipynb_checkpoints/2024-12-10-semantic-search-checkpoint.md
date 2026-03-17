@@ -1,7 +1,10 @@
 ---
 layout: post
 title:  "Using Semantic Re-Ranking to Improve Results w/ Semantic Search"
+permalink: /posts/2024/12/semantic-similarity-reranking/
 date: 2024-12-10
+header:
+  teaser: semantic-similarity-testing.png
 excerpt_separator: <!--more-->
 tags:
   - nlp

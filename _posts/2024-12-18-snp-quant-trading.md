@@ -2,6 +2,9 @@
 layout: post
 title:  "Financial Trade Backtesting with the S&P 500"
 date: 2024-12-18
+permalink: /posts/2024/12/snp-trade-backtesting/
+header:
+  teaser: snp-forecasting-infographic.png
 excerpt_separator: <!--more-->
 tags:
   - finance

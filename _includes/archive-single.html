@@ -63,7 +63,9 @@
               <img
                 class="archive__item-thumb-img"
                 src={% if teaser contains "://" %}"{{ teaser }}"{% else %}"{{ teaser | prepend: "/images/" | prepend: base_path }}"{% endif %}
-                alt="">
+                alt="{{ post.title | escape }}"
+                loading="lazy"
+                decoding="async">
             </a>
           </div>
         {% endif %}

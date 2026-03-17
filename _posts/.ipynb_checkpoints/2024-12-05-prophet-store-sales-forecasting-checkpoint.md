@@ -1,7 +1,9 @@
 ---
 layout: post
 title:  "Time-Series Forecasting w/ Prophet"
-excerpt_separator: <!--more-->
+permalink: /posts/2024/12/prophet-model-forecasting/
+header:
+  teaser: prophet-products-forecasting.png
 tags:
   - machine-learning
   - time-series
@@ -13,6 +15,7 @@ tags:
   - feature-engineering
   - model-evaluation
   - kaggle
+excerpt_separator: <!--more-->
 ---
 
 In this post, we use a generalized additive model to forecast store sales using contrbuting factors as variables to help improve the accuracy of demand predictions.

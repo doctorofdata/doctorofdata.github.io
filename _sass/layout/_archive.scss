@@ -50,47 +50,18 @@
    (Must not break the #main float layout)
    ========================================================= */
 
-.archive__item-summary {
-  margin-top: 0.25rem;
-  max-width: 100%;
-
-  @include breakpoint($small) {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-}
-
-.archive__item-summary-text {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.archive__item-thumb {
-  flex: 0 1 160px;
-  max-width: 160px;
-}
-
-.archive__item-thumb-link {
-  display: block;
-  max-width: 100%;
-}
-
-.archive__item-thumb-img {
-  display: block;
-  width: 100%;
-  max-width: 160px;
-  height: auto;
-  border-radius: $border-radius;
-  object-fit: cover;
-}
-
-/*
-   List view
-   ========================================================================== */
-
+/* Add consistent separation between archive items in list view */
 .list__item {
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--global-border-color);
+
+  &:last-child {
+    border-bottom: 0;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
   @include breakpoint($medium) {
     padding-right: $right-sidebar-width-narrow;
   }
@@ -108,6 +79,58 @@
   }
 }
 
+.archive__item-summary {
+  margin-top: 0.5rem;
+  max-width: 100%;
+
+  @include breakpoint($small) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.1rem;
+  }
+}
+
+.archive__item-summary-text {
+  min-width: 0;
+  flex: 1 1 auto;
+
+  /* keeps excerpts from feeling “ragged” */
+  p.archive__item-excerpt {
+    margin-bottom: 0;
+  }
+}
+
+.archive__item-thumb {
+  flex: 0 0 176px;
+  max-width: 176px;
+
+  @include breakpoint($medium) {
+    flex-basis: 192px;
+    max-width: 192px;
+  }
+}
+
+.archive__item-thumb-link {
+  display: block;
+  max-width: 100%;
+}
+
+/* Make thumbs consistent, image-forward, but not overpowering */
+.archive__item-thumb-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: $border-radius;
+
+  /* The key: consistent frame */
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: center;
+
+  /* Subtle polish */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
 
 /*
    Grid view
@@ -152,7 +175,6 @@
     }
   }
 }
-
 
 /*
    Features
