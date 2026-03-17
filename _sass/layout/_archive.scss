@@ -80,14 +80,11 @@
 }
 
 .archive__item-summary {
-  margin-top: 0.5rem;
-  max-width: 100%;
-
   @include breakpoint($small) {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1.1rem;
+    gap: 0.9rem;
   }
 }
 
@@ -102,34 +99,49 @@
 }
 
 .archive__item-thumb {
-  flex: 0 0 176px;
-  max-width: 176px;
+  /* baseline width (doesn't need to be huge since we "hang" it right) */
+  flex: 0 0 240px;
+  max-width: 240px;
 
   @include breakpoint($medium) {
-    flex-basis: 192px;
-    max-width: 192px;
+    flex-basis: 280px;
+    max-width: 280px;
+
+    /* expand into the reserved right padding (not into the sidebar) */
+    margin-right: calc(-1 * (#{$right-sidebar-width-narrow} - 1rem));
   }
+
+  @include breakpoint($large) {
+    flex-basis: 320px;
+    max-width: 320px;
+
+    margin-right: calc(-1 * (#{$right-sidebar-width} - 1rem));
+  }
+
+  @include breakpoint($x-large) {
+    margin-right: calc(-1 * (#{$right-sidebar-width-wide} - 1rem));
+  }
+}
+
+.archive__item-thumb-img {
+  display: block;
+  width: 100%;
+  height: auto;
+
+  /* full image, no crop */
+  object-fit: contain;
+
+  /* keep mixed images from going wild vertically */
+  max-height: 240px;
+
+  border-radius: $border-radius;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .archive__item-thumb-link {
   display: block;
   max-width: 100%;
-}
-
-/* Make thumbs consistent, image-forward, but not overpowering */
-.archive__item-thumb-img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: $border-radius;
-
-  /* The key: consistent frame */
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  object-position: center;
-
-  /* Subtle polish */
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
 /*
