@@ -22,6 +22,8 @@ In this post, we use a generalized additive model to forecast store sales using 
 
 <!--more-->
 
+<p align = "center"><img src = "/images/prophet-products-forecasting.png" style = "width: 300px; height: auto;"/></p>
+
 # Forecasting at Scale: Time-Series with Prophet
 
 In this exercise we will use parallel computing to implement prophet models for each product in the data and conduct forecasting to submit to kaggle for evaluation

@@ -22,6 +22,8 @@ In this experiment, we use a python library for optimizing model parameters empl
 
 <!--more-->
 
+<p align = "center"><img src = "/images/heart-disease-infographic.png" style = "width: 300px; height: auto;"/></p>
+
 # Machine Learning- An Approach to Choosing Model Parameters <a class = "anchor" id = "top"></a>
 
 Introduction- In this notebook, we will use the Optuna library to conduct experiments which can be used to set model hyperparameters for effectively implementing various machine learning algorithms

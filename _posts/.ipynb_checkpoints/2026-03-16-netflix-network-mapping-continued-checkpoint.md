@@ -18,6 +18,8 @@ This post is a continuation of the previous in which we used a dataset posted on
 
 <!--more-->
 
+<p align = "center"><img src = "/images/networking-mind-map.png" style = "width: 300px; height: auto;"/></p>
+
 # 🎬 Mapping the Netflix Cinematic Graph Part II <a class="anchor" id="top"></a>
 
 ### A Network Science Exploration of Film Relationships

@@ -23,6 +23,8 @@ Quantitative backtesting of a model used to initiate financial trading for all s
 
 <!--more-->
 
+<p align = "center"><img src = "/images/snp-forecasting-infographic.png" style = "width: 300px; height: auto;"/></p>
+
 ```python
 #!pip install pandas-datareader yfinance
 ```

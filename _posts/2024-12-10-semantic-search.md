@@ -27,6 +27,8 @@ This demonstration involves using a technique called semantic re-ranking as a me
 
 <a class = "anchor" id = "top"></a>
 
+<p align = "center"><img src = "/images/semantic-similarity-testing.png" style = "width: 300px; height: auto;"/></p>
+
 # Semantic Search
 
 In this exercise, we will use various techniques to assess search relevance by testing "Mean Absolute Percent Error" (MAPE) of our algorithms and their ability to retrieve relevant products based on various search queries. 
