@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Financial Trade Backtesting with the S&P 500"
+title:  "Machine Learning Pipeline Evaluations w/ PySpark"
 date: 2026-03-18
 permalink: /posts/2024/12/pyspark-income-predictions/
 header:
