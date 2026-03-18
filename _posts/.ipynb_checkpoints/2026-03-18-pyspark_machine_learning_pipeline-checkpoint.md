@@ -1,5 +1,4 @@
 ---
-layout: post
 title:  "Machine Learning Pipeline Evaluations w/ PySpark"
 date: 2026-03-18
 permalink: /posts/2024/12/pyspark-income-predictions/
