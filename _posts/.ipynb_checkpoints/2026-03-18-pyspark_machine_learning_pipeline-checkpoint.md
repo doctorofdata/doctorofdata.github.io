@@ -44,7 +44,7 @@ tags:
 Recently, I was asked by someone to describe my experience w/pyspark. It has been a while since I used it, and I figured I could use a touch-up, so I wrote this walkthrough as a gentle introduction to machine learning in distributed environments. Here it is. 
 <!--more-->
 
-<p align = "center"><img src = "/images/pyspark-pipeline-infographic.png" style = "width: 300px; height: auto;"/></p>
+<p align = "center"><img src = "/images/pyspark-pipeline-infographic.png" style = "width: 500px; height: auto;"/></p>
 
 # Census Data- Predicting Employment Wages <a class="anchor" id="first-bullet"></a>
 

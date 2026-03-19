@@ -34,6 +34,28 @@
         <a href="{{ base_path }}{{ post.url }}" rel="permalink">{{ title }}</a>
       {% endif %}
     </h2>
+
+    {%- comment -%}
+    =========================
+    TAG CHIPS ADDED
+    =========================
+    Uses your existing config:
+      tag_archive:
+        type: liquid
+        path: /tags/
+    and reuses existing CSS class .page__taxonomy-item (already styled like pills).
+    {%- endcomment -%}
+    {% if site.tag_archive.type and post.tags and post.tags[0] %}
+      <p class="page__taxonomy">
+        <span itemprop="keywords">
+          {% for tag in post.tags %}
+            <a href="{{ base_path }}{{ site.tag_archive.path }}#{{ tag | slugify }}"
+               class="page__taxonomy-item"
+               rel="tag">{{ tag }}</a>
+          {% endfor %}
+        </span>
+      </p>
+    {% endif %}
     
     {% if post.read_time %}
       <p class="page__meta"><i class="fa fa-clock" aria-hidden="true"></i> {% include read-time.html %}</p>

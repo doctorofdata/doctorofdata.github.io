@@ -279,3 +279,41 @@
     }
   }
 }
+
+/* --------------------------------------------------------------------------
+   Tag chips (archive-only): smaller + more modern looking
+   Applies to /year-archive/ and other pages using the .archive wrapper
+   -------------------------------------------------------------------------- */
+
+.archive .page__taxonomy {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.archive .page__taxonomy-item {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 1px 7px;
+  margin: 0 6px 6px 0;
+
+  font-size: 0.68rem;
+  line-height: 1.45;
+  font-weight: 600;
+
+  border-radius: 999px;
+  border: 1px solid rgba(127, 127, 127, 0.30);
+  background: rgba(127, 127, 127, 0.10);
+
+  text-decoration: none;
+  letter-spacing: 0.01em;
+
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.archive .page__taxonomy-item:hover,
+.archive .page__taxonomy-item:focus {
+  background: rgba(127, 127, 127, 0.16);
+  border-color: rgba(127, 127, 127, 0.50);
+  transform: translateY(-1px);
+}
+

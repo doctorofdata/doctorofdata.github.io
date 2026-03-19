@@ -2,9 +2,14 @@
 layout: cv-layout
 title: "The Data Guy - CV"
 permalink: /cv/
+author_profile: true
 redirect_from:
   - /resume
 ---
+
+<p align="center"><img src = "/images/cv.png" /></p>
+
+## <center style = "color: dodgerblue;">The Data Guy</center>
 
 ## <center style = "color: orange;">Skills</center>
 
