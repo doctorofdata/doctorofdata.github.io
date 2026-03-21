@@ -14,8 +14,5 @@ main:
   - title: "CV"
     url: /cv/
     
-  - title: "Network Graph Explorer"
-    url: /projects/network-graphing-explorer/
-
-  - title: "Machine Learning Model Explorer"
-    url: /projects/machine-learning-model-explorer
+  - title: "Projects"
+    url: /projects/
