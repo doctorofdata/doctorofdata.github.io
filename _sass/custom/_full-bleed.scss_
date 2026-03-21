@@ -1,0 +1,15 @@
+/* Make embedded apps span the full viewport width (even inside constrained article columns) */
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 0 1rem; /* optional: keeps a little gutter */
+}
+
+.full-bleed iframe {
+  width: 100%;
+  height: 85vh;
+  border: 1px solid #222;
+  border-radius: 8px;
+  display: block;
+}

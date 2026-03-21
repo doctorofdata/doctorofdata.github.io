@@ -1,0 +1,19 @@
+/* Global: use more horizontal space for main content column */
+@include breakpoint($large) {
+  .page {
+    /* was suffix(2 of 12) in layout/_page.scss */
+    @include suffix(0 of 12);
+
+    /* optional: reduce left padding too if you want it tighter */
+    /* @include prefix(0 of 12); */
+  }
+}
+
+/* Optional: if you still feel capped on ultra-wide screens, relax container max-widths */
+@include breakpoint($x-large) {
+  .masthead__inner-wrap,
+  .greedy-nav .visible-links,
+  #main {
+    max-width: none;
+  }
+}
