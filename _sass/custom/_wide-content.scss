@@ -3,8 +3,11 @@
 @include breakpoint($large) {
   .layout--single.wide {
     .page {
-      @include span(12 of 12 last);
-      @include prefix(0 of 12);
+      /* keep the sidebar layout intact */
+      @include span(10 of 12 last);
+      @include prefix(0.5 of 12);
+
+      /* remove the reserved whitespace on the right */
       @include suffix(0 of 12);
     }
   }
@@ -12,6 +15,7 @@
 
 @include breakpoint($x-large) {
   .layout--single.wide {
+    /* allow the overall container to expand on big screens */
     #main {
       max-width: none;
     }
