@@ -5,13 +5,12 @@ layout: single
 classes: wide
 ---
 
-<div class = 'full-bleed'>
-    <iframe
+<iframe
+        class = "demo-iframe"
         src="/assets/demos/network-graphing-explorer.html"
-        style="width:100%; height:85vh; border:1px solid #222; border-radius:8px;"
-         loading="lazy">
+        loading="lazy">
     </iframe>
-</div>
+
 <p>
   <a href="/assets/demos/network-graphing-explorer.html" target="_blank" rel="noopener">
     Open full screen
