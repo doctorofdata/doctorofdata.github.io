@@ -57,6 +57,8 @@ This post briefly discusses the newest feature introduction to this site: a comp
 - Gaussian Naive Bayes  
 - Decision Tree  
 - Random Forest  
+- ADA Boost
+- Gradient Boosting Machine
 
 ---
 

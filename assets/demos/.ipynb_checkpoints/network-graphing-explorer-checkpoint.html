@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Graph Explorer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg: #080808;
+  --surface: #101010;
+  --surface2: #181818;
+  --surface3: #1e1e1e;
+  --border: #222222;
+  --border2: #2e2e2e;
+  --text: #e2e2e2;
+  --text-muted: #666;
+  --text-dim: #383838;
+  --accent: #E50914;
+  --accent-dim: rgba(229,9,20,0.18);
+  --accent2: #ff3d3d;
+  --green: #2EC4B6;
+  --amber: #f59e0b;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+#header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 18px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+#header h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 21px;
+  letter-spacing: 2.5px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+#search-box {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 5px 10px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  width: 170px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+#search-box:focus { border-color: var(--accent); }
+#search-box::placeholder { color: var(--text-dim); }
+#data-badge {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+/* ── Layout ── */
+#main {
+  display: grid;
+  grid-template-columns: 230px 1fr 255px;
+  flex: 1;
+  overflow: hidden;
+}
+aside {
+  background: var(--surface);
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+aside::-webkit-scrollbar { width: 3px; }
+aside::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+#controls { border-right: 1px solid var(--border); }
+#stats-panel { border-left: 1px solid var(--border); }
+
+/* ── Panel sections ── */
+.panel-section { display: flex; flex-direction: column; gap: 9px; }
+.section-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+  margin-bottom: 1px;
+}
+.control-row { display: flex; flex-direction: column; gap: 5px; }
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.val {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+  font-size: 10px;
+  background: var(--surface3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--border2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+select:focus { border-color: var(--accent); }
+
+/* ── Toggles ── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.toggle { position: relative; width: 30px; height: 16px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  left: 3px;
+  top: 3px;
+  background: #aaa;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(14px); background: white; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 7px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+  width: 100%;
+  text-align: center;
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text-muted);
+  border: 1px solid var(--border2);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+/* ── Bundle status chip ── */
+#bundle-status {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 3px 8px;
+  border-radius: 3px;
+  text-align: center;
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  background: var(--surface3);
+  transition: all 0.2s;
+}
+#bundle-status.computing {
+  color: var(--amber);
+  border-color: var(--amber);
+  animation: pulse 1s ease-in-out infinite;
+}
+#bundle-status.done   { color: var(--green); border-color: var(--green); }
+#bundle-status.stale  { color: var(--amber); border-color: var(--amber); }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+
+.bundle-controls { display: flex; flex-direction: column; gap: 9px; transition: opacity 0.2s; }
+.bundle-controls.disabled { opacity: 0.35; pointer-events: none; }
+
+/* ── Canvas ── */
+#canvas-wrapper { position: relative; overflow: hidden; background: #050505; }
+#graph { width: 100%; height: 100%; display: block; }
+
+/* ── Bundle computing overlay ── */
+#bundle-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(5,5,5,0.75);
+  z-index: 50;
+  backdrop-filter: blur(1px);
+}
+#bundle-overlay.active { display: flex; }
+.overlay-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.overlay-text { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Tooltip ── */
+#tooltip {
+  position: absolute;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 13px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  max-width: 220px;
+  z-index: 100;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+}
+#tooltip.visible { opacity: 1; }
+.tt-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.tt-row {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+.tt-row span:last-child { font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.tt-divider { border: none; border-top: 1px solid var(--border); margin: 5px 0; }
+.tt-neighbors { font-size: 10px; color: #555; line-height: 1.5; margin-top: 2px; }
+
+/* ── Stats ── */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.stat-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 9px;
+}
+.stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.stat-lbl { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Leaderboard ── */
+.leaderboard { display: flex; flex-direction: column; gap: 3px; }
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.lb-row:hover { background: var(--surface3); }
+.lb-row.active { border-color: var(--accent); background: var(--accent-dim); }
+.lb-rank { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-dim); width: 14px; }
+.lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-bar { width: 35px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.lb-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s; }
+.lb-deg { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); }
+
+/* ── Legend ── */
+.legend { display: flex; flex-direction: column; gap: 4px; }
+.legend-item { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--text-muted); }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Selected node panel ── */
+#selected-info {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 12px;
+  font-size: 11px;
+  display: none;
+}
+#selected-info.visible { display: block; }
+.sel-name { font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+.sel-row { display: flex; justify-content: space-between; color: var(--text-muted); margin-bottom: 3px; }
+.sel-row span:last-child { font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.sel-hint { font-size: 10px; color: var(--text-dim); text-align: center; padding: 10px 0; }
+
+/* ── Upload hint ── */
+.upload-hint {
+  font-size: 9px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.7;
+  background: var(--surface3);
+  border: 1px dashed var(--border2);
+  border-radius: 4px;
+  padding: 7px 9px;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🎬 Netflix Network Explorer</h1>
+  <span class="subtitle">cast &amp; director collaboration · louvain communities · FDEB bundling</span>
+  <div class="header-right">
+    <input id="search-box" type="text" placeholder="🔍 Search person…" autocomplete="off">
+    <span id="data-badge">SEED DATA</span>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- ── Left Controls ── -->
+  <aside id="controls">
+
+    <div class="panel-section">
+      <div class="section-label">Graph Filters</div>
+      <div class="control-row">
+        <div class="control-label">
+          <span>Edge Weight Min</span><span class="val" id="val-weight">2</span>
+        </div>
+        <input type="range" id="sl-weight" min="1" max="10" value="2" step="1">
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Physics</div>
+      <div class="control-row">
+        <div class="control-label"><span>Charge Strength</span><span class="val" id="val-charge">-150</span></div>
+        <input type="range" id="sl-charge" min="-500" max="-20" value="-150" step="10">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Link Distance</span><span class="val" id="val-dist">70</span></div>
+        <input type="range" id="sl-dist" min="15" max="220" value="70" step="5">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Collision Buffer</span><span class="val" id="val-coll">8</span></div>
+        <input type="range" id="sl-coll" min="0" max="30" value="8" step="1">
+      </div>
+      <div class="control-row">
+        <div class="control-label"><span>Link Strength</span><span class="val" id="val-lstr">0.4</span></div>
+        <input type="range" id="sl-lstr" min="0.05" max="1.0" value="0.4" step="0.05">
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Display</div>
+      <div class="control-row">
+        <div class="control-label"><span>Node Size By</span></div>
+        <select id="sel-size">
+          <option value="degree">Degree</option>
+          <option value="strength">Collab. Strength</option>
+          <option value="uniform">Uniform</option>
+        </select>
+      </div>
+      <div class="toggle-row">
+        <span>Node Labels</span>
+        <label class="toggle"><input type="checkbox" id="tog-labels" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>Community Colors</span>
+        <label class="toggle"><input type="checkbox" id="tog-colors" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>Weight → Opacity</span>
+        <label class="toggle"><input type="checkbox" id="tog-opacity" checked><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <!-- ── Edge Bundling ── -->
+    <div class="panel-section">
+      <div class="section-label">Edge Bundling</div>
+      <div class="toggle-row">
+        <span>Enable FDEB</span>
+        <label class="toggle"><input type="checkbox" id="tog-bundle"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="bundle-status">OFF</div>
+      <div class="bundle-controls disabled" id="bundle-controls">
+        <div class="control-row">
+          <div class="control-label"><span>Bundle Strength</span><span class="val" id="val-bstr">0.85</span></div>
+          <input type="range" id="sl-bstr" min="0.1" max="2.0" value="0.85" step="0.05">
+        </div>
+        <div class="control-row">
+          <div class="control-label"><span>Compatibility</span><span class="val" id="val-bcompat">0.4</span></div>
+          <input type="range" id="sl-bcompat" min="0.05" max="0.9" value="0.4" step="0.05">
+        </div>
+        <div class="control-row">
+          <div class="control-label"><span>Smoothing Cycles</span><span class="val" id="val-bcycles">4</span></div>
+          <input type="range" id="sl-bcycles" min="1" max="7" value="4" step="1">
+        </div>
+        <button class="btn btn-secondary" id="btn-recompute">⟳ &nbsp;Recompute Bundles</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Actions</div>
+      <button class="btn btn-secondary" id="btn-reset-layout">↺ &nbsp;Restart Layout</button>
+      <input type="file" id="file-input" accept=".csv" style="display:none">
+      <button class="btn btn-primary" id="btn-upload">↑ &nbsp;Upload Edge CSV</button>
+      <div class="upload-hint">Format: source,target,weight<br>Columns auto-detected.<br>Example: Alice,Bob,3</div>
+      <button class="btn btn-secondary" id="btn-reset-data" style="display:none">↩ &nbsp;Restore Netflix Data</button>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Communities</div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── Graph Canvas ── -->
+  <div id="canvas-wrapper">
+    <svg id="graph"></svg>
+    <div id="bundle-overlay">
+      <div class="overlay-spinner"></div>
+      <div class="overlay-text" id="overlay-text">Computing bundles…</div>
+    </div>
+    <div id="tooltip">
+      <div class="tt-name" id="tt-name"></div>
+      <div class="tt-row"><span>Community</span><span id="tt-comm"></span></div>
+      <div class="tt-row"><span>Degree</span><span id="tt-degree"></span></div>
+      <div class="tt-row"><span>Total Weight</span><span id="tt-weight"></span></div>
+      <hr class="tt-divider">
+      <div style="font-size:9px;color:var(--text-muted);margin-bottom:2px">Top collaborators</div>
+      <div class="tt-neighbors" id="tt-neighbors"></div>
+    </div>
+  </div>
+
+  <!-- ── Right Stats Panel ── -->
+  <aside id="stats-panel">
+    <div class="panel-section">
+      <div class="section-label">Network Statistics</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-val" id="st-nodes">—</div><div class="stat-lbl">Nodes</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-edges">—</div><div class="stat-lbl">Edges</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-density">—</div><div class="stat-lbl">Density</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-comps">—</div><div class="stat-lbl">Components</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-avgdeg">—</div><div class="stat-lbl">Avg Degree</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-maxdeg">—</div><div class="stat-lbl">Max Degree</div></div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="section-label">Top Nodes by Degree</div>
+      <div class="leaderboard" id="leaderboard"></div>
+    </div>
+    <div class="panel-section">
+      <div class="section-label">Selected Node</div>
+      <div id="selected-info">
+        <div class="sel-name" id="sel-name">—</div>
+        <div class="sel-row"><span>Community</span><span id="sel-comm">—</span></div>
+        <div class="sel-row"><span>Degree</span><span id="sel-degree">—</span></div>
+        <div class="sel-row"><span>Total Collab. Weight</span><span id="sel-wt">—</span></div>
+        <div class="sel-row"><span>Direct Neighbors</span><span id="sel-nb">—</span></div>
+      </div>
+      <div class="sel-hint" id="sel-hint">Click any node to inspect</div>
+    </div>
+  </aside>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Seeded PRNG (mulberry32) — reproducible layout
+// ═══════════════════════════════════════════════════════════════
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Community data (from Louvain output in the blog posts)
+// ═══════════════════════════════════════════════════════════════
+const COMMUNITIES = [
+  { id:0, label:"Nollywood",         color:"#E50914",
+    members:["Omoni Oboli","Kunle Afolayan","Toyin Abraham","Funke Akindele","Blossom Chukwujekwu",
+             "Genevieve Nnaji","Ramsey Nouah","Pete Edochie","RMD","Omotola Jalade"] },
+  { id:1, label:"SNL / Comedy",      color:"#00B4D8",
+    members:["Scott Aukerman","Adam Sandler","Fred Armisen","Alan Cumming","Akiva Schaffer",
+             "Rob Schneider","Kevin Nealon","David Spade","Chris Rock","Tracy Morgan"] },
+  { id:2, label:"Turkish Cinema",    color:"#F4A261",
+    members:["Yilmaz Erdogan","Cem Yilmaz","Demet Akbag","Sermiyan Midyat","Tarik Unluoglu",
+             "Ozan Guven","Haluk Bilginer","Nejat Isler","Berguzar Korel","Kivanc Tatlitug"] },
+  { id:3, label:"Animation Voice",   color:"#2EC4B6",
+    members:["Frank Welker","Fred Tatasciore","Debi Derryberry","Kate Higgins","Laura Bailey",
+             "Erin Fitzgerald","John DiMaggio","Grey Griffin","Tom Kenny","Tara Strong"] },
+  { id:4, label:"Hollywood Action",  color:"#FFBE0B",
+    members:["Bruce Willis","Clint Eastwood","John Cusack","50 Cent","Nicolas Cage",
+             "Jason Statham","Charles Martin Smith","Mike Birbiglia","Ving Rhames","Josh Lucas"] },
+  { id:5, label:"Apatow Circle",     color:"#A64AC9",
+    members:["Will Ferrell","John C Reilly","James Franco","Seth Rogen","Jonah Hill",
+             "Paul Rudd","Molly Shannon","William H Macy","Jason Segel","Kristen Wiig"] },
+  { id:6, label:"Urban Comedy",      color:"#FB5607",
+    members:["Kevin Smith","Cedric the Entertainer","Keanu Reeves","Jada Pinkett Smith",
+             "Martin Lawrence","Ice Cube","Jamie Foxx","Keenen Ivory Wayans","Regina Hall"] },
+  { id:7, label:"International Art", color:"#3A86FF",
+    members:["Taika Waititi","Andy Serkis","Jon Favreau","Alan Rickman","Simon Pegg",
+             "Nick Frost","Jackie van Beek","Jemaine Clement","Rhys Darby"] },
+  { id:8, label:"Indie / College",   color:"#FF006E",
+    members:["Elizabeth Banks","Jay Baruchel","Seann William Scott","Liev Schreiber",
+             "Alison Pill","Anna Kendrick","Rebel Wilson","Mae Whitman","Michael Cera"] },
+  { id:9, label:"Bollywood",         color:"#06D6A0",
+    members:["Anupam Kher","Amitabh Bachchan","Shah Rukh Khan","Deepika Padukone",
+             "Akshay Kumar","Ranveer Singh","Priyanka Chopra","Aamir Khan"] },
+];
+
+// Build lookup maps at startup
+const COMM_OF   = new Map(); // name → community id
+const LABEL_OF  = new Map(); // name → community label
+const COLOR_OF  = new Map(); // community id → hex color
+for (const c of COMMUNITIES) {
+  COLOR_OF.set(c.id, c.color);
+  for (const m of c.members) { COMM_OF.set(m, c.id); LABEL_OF.set(m, c.label); }
+}
+COLOR_OF.set(-1, '#888888');
+
+const CROSS_EDGES = [
+  { source:"John C Reilly",   target:"Elizabeth Banks",   weight:2 },
+  { source:"John C Reilly",   target:"Liev Schreiber",    weight:2 },
+  { source:"Seth Rogen",      target:"Jay Baruchel",      weight:4 },
+  { source:"Seth Rogen",      target:"Michael Cera",      weight:3 },
+  { source:"Adam Sandler",    target:"Rob Schneider",     weight:8 },
+  { source:"Kevin Smith",     target:"Adam Sandler",      weight:2 },
+  { source:"Scott Aukerman",  target:"Will Ferrell",      weight:2 },
+  { source:"Nicolas Cage",    target:"John Cusack",       weight:3 },
+  { source:"Bruce Willis",    target:"Ving Rhames",       weight:2 },
+  { source:"Jason Statham",   target:"50 Cent",           weight:2 },
+  { source:"Keanu Reeves",    target:"Jada Pinkett Smith",weight:3 },
+  { source:"Jon Favreau",     target:"Keanu Reeves",      weight:2 },
+  { source:"Andy Serkis",     target:"Alan Rickman",      weight:3 },
+  { source:"Taika Waititi",   target:"Nick Frost",        weight:2 },
+  { source:"Simon Pegg",      target:"Nick Frost",        weight:8 },
+  { source:"Anna Kendrick",   target:"Elizabeth Banks",   weight:3 },
+  { source:"Molly Shannon",   target:"Alison Pill",       weight:2 },
+  { source:"Kristen Wiig",    target:"Anna Kendrick",     weight:2 },
+  { source:"Anupam Kher",     target:"Shah Rukh Khan",    weight:5 },
+  { source:"Priyanka Chopra", target:"Deepika Padukone",  weight:3 },
+  { source:"Tom Kenny",       target:"Fred Armisen",      weight:2 },
+  { source:"Genevieve Nnaji", target:"Jada Pinkett Smith",weight:1 },
+];
+
+function generateSeedEdges() {
+  const rand = mulberry32(42);
+  const edges = [];
+  for (const comm of COMMUNITIES) {
+    const m = comm.members;
+    for (let i = 0; i < m.length; i++)
+      for (let j = i + 1; j < m.length; j++)
+        if (rand() < 0.44)
+          edges.push({ source: m[i], target: m[j], weight: Math.floor(rand() * 7) + 2 });
+  }
+  for (const e of CROSS_EDGES) edges.push(e);
+  return edges;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Build graph objects from raw edge list
+// ═══════════════════════════════════════════════════════════════
+function buildGraph(rawEdges, weightMin) {
+  const filtered = rawEdges.filter(e => +e.weight >= weightMin);
+  const nodeMap = new Map();
+
+  function ensureNode(name) {
+    if (!nodeMap.has(name)) {
+      const cid = COMM_OF.has(name) ? COMM_OF.get(name) : -1;
+      nodeMap.set(name, {
+        id: name,
+        community: cid,
+        communityLabel: LABEL_OF.get(name) || 'Custom',
+        degree: 0,
+        totalWeight: 0,
+        neighbors: [],
+      });
+    }
+    return nodeMap.get(name);
+  }
+
+  const nbMap = new Map();
+  for (const e of filtered) {
+    const s = ensureNode(e.source);
+    const t = ensureNode(e.target);
+    s.degree++;       t.degree++;
+    s.totalWeight += +e.weight;
+    t.totalWeight += +e.weight;
+    if (!nbMap.has(e.source)) nbMap.set(e.source, []);
+    if (!nbMap.has(e.target)) nbMap.set(e.target, []);
+    nbMap.get(e.source).push(e.target);
+    nbMap.get(e.target).push(e.source);
+  }
+  nodeMap.forEach((n, k) => { n.neighbors = nbMap.get(k) || []; });
+
+  const activeIds = new Set(filtered.flatMap(e => [e.source, e.target]));
+  const nodes = [...nodeMap.values()].filter(n => activeIds.has(n.id));
+  const links = filtered.map(e => ({ source: e.source, target: e.target, weight: +e.weight }));
+  return { nodes, links };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Visual helpers
+// ═══════════════════════════════════════════════════════════════
+function nodeColor(d) {
+  if (!state.communityColors) return '#888888';
+  return COLOR_OF.get(d.community) || '#888888';
+}
+
+function nodeRadius(d) {
+  if (state.sizeMetric === 'uniform') return 8;
+  const val = state.sizeMetric === 'strength' ? (d.totalWeight || 0) : (d.degree || 0);
+  const maxVal = d3.max(currentNodes, n =>
+    state.sizeMetric === 'strength' ? (n.totalWeight || 0) : (n.degree || 0)) || 1;
+  return 5 + (val / maxVal) * 18;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  App state
+// ═══════════════════════════════════════════════════════════════
+const state = {
+  weightMin: 2,
+  charge: -150, linkDist: 70, collision: 8, linkStr: 0.4,
+  sizeMetric: 'degree',
+  showLabels: true, communityColors: true, weightOpacity: true,
+  selectedNode: null,
+  rawEdges: generateSeedEdges(), isCustom: false,
+  // Bundle
+  bundling: false,
+  bundleStr: 0.85, bundleCompat: 0.4, bundleCycles: 4,
+  bundleReady: false,
+};
+
+let simulation, svg, g, linkSel, bundleSel, nodeSel, labelSel;
+let currentNodes = [], currentLinks = [];
+let simEndTimer = null;
+
+// ═══════════════════════════════════════════════════════════════
+//  ████  FDEB — Force-Directed Edge Bundling  ████
+//  Holten & van Wijk 2009
+//  Each edge is replaced by a polyline of control points.
+//  Compatible edge-pairs attract each other's interior points
+//  while a spring force prevents excessive bending.
+// ═══════════════════════════════════════════════════════════════
+
+// Edge compatibility: product of angle, scale, position scores
+function edgeCompat(ea, eb) {
+  const dax = ea.q.x - ea.p.x, day = ea.q.y - ea.p.y;
+  const dbx = eb.q.x - eb.p.x, dby = eb.q.y - eb.p.y;
+  const la = Math.sqrt(dax*dax + day*day) || 1e-6;
+  const lb = Math.sqrt(dbx*dbx + dby*dby) || 1e-6;
+
+  // Angle: |cos θ|  — 1 = parallel, 0 = perpendicular
+  const Ca = Math.abs((dax*dbx + day*dby) / (la * lb));
+
+  // Scale: penalise wildly different edge lengths
+  const lavg = (la + lb) / 2;
+  const Cs = 2 / (lavg / Math.min(la, lb) + Math.max(la, lb) / lavg);
+
+  // Position: closer midpoints score higher
+  const mx = (ea.p.x + ea.q.x) / 2, my = (ea.p.y + ea.q.y) / 2;
+  const nx = (eb.p.x + eb.q.x) / 2, ny = (eb.p.y + eb.q.y) / 2;
+  const Cp = lavg / (lavg + Math.sqrt((mx-nx)**2 + (my-ny)**2));
+
+  return Ca * Cs * Cp;
+}
+
+// Double interior control points by midpoint insertion
+function subdivide(e) {
+  const pts = e.pts, out = [pts[0]];
+  for (let i = 0; i < pts.length - 1; i++) {
+    out.push({ x: (pts[i].x + pts[i+1].x) / 2, y: (pts[i].y + pts[i+1].y) / 2 });
+    out.push({ x: pts[i+1].x, y: pts[i+1].y });
+  }
+  e.pts = out;
+}
+
+function runFDEB(nodes, links, opts) {
+  const compatThresh = opts.compatThresh || 0.4;
+  const cycles       = opts.cycles       || 4;
+  const K            = opts.K            || 0.3;   // spring stiffness
+
+  // --- Snapshot current node positions ---
+  const pos = {};
+  nodes.forEach(n => { pos[n.id] = { x: n.x || 0, y: n.y || 0 }; });
+
+  // --- Build edge structs with p, q anchors and initial midpoint ---
+  const edges = links.map(l => {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source;
+    const tid = typeof l.target === 'object' ? l.target.id : l.target;
+    const p = pos[sid] || { x: 0, y: 0 };
+    const q = pos[tid] || { x: 0, y: 0 };
+    return {
+      p: { x: p.x, y: p.y },
+      q: { x: q.x, y: q.y },
+      weight: l.weight || 1,
+      pts: [
+        { x: p.x, y: p.y },
+        { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 },
+        { x: q.x, y: q.y },
+      ],
+    };
+  });
+
+  const E = edges.length;
+
+  // --- Average edge length — used to scale the step size ---
+  let avgLen = 0;
+  for (const e of edges) {
+    const dx = e.q.x - e.p.x, dy = e.q.y - e.p.y;
+    avgLen += Math.sqrt(dx*dx + dy*dy);
+  }
+  avgLen = (avgLen / E) || 100;
+
+  // Step size proportional to average edge length — THIS was the key bug fix.
+  // The old version used S0 = 0.06 (pixel-scale tiny). Now it scales properly.
+  let S = avgLen * opts.bundleStr * 0.08;  // e.g. 150px * 0.85 * 0.08 ≈ 10px
+  let I = 60;                              // iterations per cycle
+
+  // --- Pre-compute compatible neighbours (O(E²)) ---
+  const compat = Array.from({ length: E }, () => []);
+  for (let i = 0; i < E; i++) {
+    for (let j = i + 1; j < E; j++) {
+      const c = edgeCompat(edges[i], edges[j]);
+      if (c >= compatThresh) {
+        compat[i].push({ j, c });
+        compat[j].push({ j: i, c });
+      }
+    }
+  }
+
+  // --- Main loop: cycles of subdivision → force iteration ---
+  for (let cycle = 0; cycle < cycles; cycle++) {
+    // Double the interior control points
+    edges.forEach(e => subdivide(e));
+
+    for (let iter = 0; iter < I; iter++) {
+      edges.forEach((e, ei) => {
+        const pts = e.pts;
+        const n   = pts.length;
+        // Spring constant: stiffer for shorter subdivisions
+        const kp  = K / (Math.max(n - 1, 1));
+
+        for (let pi = 1; pi < n - 1; pi++) {
+          const cur  = pts[pi];
+          const prev = pts[pi - 1];
+          const next = pts[pi + 1];
+
+          // Spring force: pull interior point toward its two neighbours along the edge
+          const Fsx = kp * ((prev.x - cur.x) + (next.x - cur.x));
+          const Fsy = kp * ((prev.y - cur.y) + (next.y - cur.y));
+
+          // Electrostatic: attract toward corresponding points on compatible edges
+          let Fbx = 0, Fby = 0;
+          for (const { j: jj, c } of compat[ei]) {
+            const other = edges[jj].pts;
+            // Map pi to the other edge's index range (they have the same length
+            // since subdivision is done in lockstep for all edges)
+            const opi = Math.min(pi, other.length - 2);
+            const dx  = other[opi].x - cur.x;
+            const dy  = other[opi].y - cur.y;
+            const d   = Math.sqrt(dx*dx + dy*dy) || 0.01;
+            Fbx += c * dx / d;
+            Fby += c * dy / d;
+          }
+
+          cur.x += S * (Fsx + Fbx);
+          cur.y += S * (Fsy + Fby);
+        }
+      });
+    }
+
+    // Cool: halve step size, reduce iterations per cycle
+    S = S * 0.5;
+    I = Math.max(Math.floor(I * 0.66), 8);
+  }
+
+  return edges;  // return full edge structs (pts + weight + community info)
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Bundle render + overlay
+// ═══════════════════════════════════════════════════════════════
+const lineGen = d3.line()
+  .curve(d3.curveCatmullRom.alpha(0.5))
+  .x(d => d.x)
+  .y(d => d.y);
+
+function computeAndRenderBundles() {
+  const E = currentLinks.length;
+  if (E === 0) return;
+  if (E > 700) {
+    setBundleStatus('stale', `⚠ ${E} edges — raise weight min`);
+    return;
+  }
+
+  setBundleStatus('computing', '◌ COMPUTING…');
+  showOverlay(`FDEB on ${E} edges…`);
+  document.getElementById('btn-recompute').disabled = true;
+
+  // Yield to DOM so overlay paints, then run synchronously
+  setTimeout(() => {
+    let bundleEdges;
+    try {
+      bundleEdges = runFDEB(currentNodes, currentLinks, {
+        bundleStr:   state.bundleStr,
+        compatThresh: state.bundleCompat,
+        cycles:      state.bundleCycles,
+        K:           0.3,
+      });
+    } catch (err) {
+      console.error('FDEB error:', err);
+      setBundleStatus('stale', '✗ Error — see console');
+      hideOverlay();
+      document.getElementById('btn-recompute').disabled = false;
+      return;
+    }
+
+    state.bundleReady = true;
+    renderBundledPaths(bundleEdges);
+    hideStraightLinks();
+    hideOverlay();
+    setBundleStatus('done', `✓ BUNDLED  ${E} edges`);
+    document.getElementById('btn-recompute').disabled = false;
+  }, 30);
+}
+
+function renderBundledPaths(bundleEdges) {
+  const maxW = d3.max(currentLinks, l => l.weight) || 1;
+
+  // Color each path by the source node's community color for visual clarity
+  bundleSel = g.select('.bundled-edges').selectAll('path')
+    .data(bundleEdges)
+    .join(
+      enter => enter.append('path')
+        .attr('fill', 'none')
+        .attr('stroke-linecap', 'round')
+        .attr('stroke-linejoin', 'round')
+        .style('stroke', (d, i) => {
+          // Use the source node's community color; fall back to white
+          const link  = currentLinks[i];
+          const srcId = typeof link.source === 'object' ? link.source.id : link.source;
+          const cid   = COMM_OF.has(srcId) ? COMM_OF.get(srcId) : -1;
+          return COLOR_OF.get(cid) || '#ffffff';
+        })
+        .attr('stroke-width', (d, i) => {
+          const w = currentLinks[i]?.weight || 1;
+          return 0.4 + (w / maxW) * 2.0;
+        })
+        .style('opacity', 0)
+        .attr('d', d => lineGen(d.pts))
+        .call(sel => sel.transition().duration(700)
+          .style('opacity', (d, i) => {
+            const w = currentLinks[i]?.weight || 1;
+            return state.weightOpacity ? 0.12 + (w / maxW) * 0.45 : 0.28;
+          })),
+      update => update
+        .attr('d', d => lineGen(d.pts))
+        .attr('stroke-width', (d, i) => {
+          const w = currentLinks[i]?.weight || 1;
+          return 0.4 + (w / maxW) * 2.0;
+        })
+        .transition().duration(300)
+        .style('opacity', (d, i) => {
+          const w = currentLinks[i]?.weight || 1;
+          return state.weightOpacity ? 0.12 + (w / maxW) * 0.45 : 0.28;
+        }),
+      exit => exit.transition().duration(200).style('opacity', 0).remove()
+    );
+}
+
+function hideStraightLinks() {
+  if (linkSel) linkSel.transition().duration(350).style('opacity', 0);
+}
+function showStraightLinks() {
+  if (!linkSel) return;
+  const maxW = d3.max(currentLinks, l => l.weight) || 1;
+  linkSel.transition().duration(300)
+    .style('opacity', l => state.weightOpacity ? 0.06 + (l.weight / maxW) * 0.36 : 0.18);
+}
+function clearBundledPaths() {
+  if (g) g.select('.bundled-edges').selectAll('path').remove();
+  bundleSel = null;
+}
+function showOverlay(msg) {
+  document.getElementById('overlay-text').textContent = msg || 'Computing bundles…';
+  document.getElementById('bundle-overlay').classList.add('active');
+}
+function hideOverlay() {
+  document.getElementById('bundle-overlay').classList.remove('active');
+}
+function setBundleStatus(mode, text) {
+  const el = document.getElementById('bundle-status');
+  el.className = mode;
+  el.textContent = text;
+}
+function markStale() {
+  if (!state.bundling) return;
+  state.bundleReady = false;
+  setBundleStatus('stale', '⚠ STALE — recompute');
+}
+
+// Unified opacity applier: whichever layer is active
+function applyEdgeOpacity(fn) {
+  if (state.bundling && state.bundleReady && bundleSel) {
+    bundleSel.transition().duration(180).style('opacity', (d, i) => fn(currentLinks[i]));
+  } else if (linkSel) {
+    linkSel.transition().duration(180).style('opacity', fn);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SVG init
+// ═══════════════════════════════════════════════════════════════
+function initSVG() {
+  const wrap = document.getElementById('canvas-wrapper');
+  svg = d3.select('#graph')
+    .attr('width',  wrap.clientWidth)
+    .attr('height', wrap.clientHeight);
+
+  svg.append('rect').attr('width', '100%').attr('height', '100%').attr('fill', '#050505');
+
+  g = svg.append('g');
+  g.append('g').attr('class', 'links');
+  g.append('g').attr('class', 'bundled-edges');
+  g.append('g').attr('class', 'nodes');
+  g.append('g').attr('class', 'labels');
+
+  const zoom = d3.zoom().scaleExtent([0.04, 12])
+    .on('zoom', ev => g.attr('transform', ev.transform));
+  svg.call(zoom);
+  svg.on('dblclick.zoom', null).on('dblclick', clearSelection);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Simulation bootstrap
+// ═══════════════════════════════════════════════════════════════
+function buildSimulation() {
+  const wrap = document.getElementById('canvas-wrapper');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const { nodes, links } = buildGraph(state.rawEdges, state.weightMin);
+  currentNodes = nodes;
+  currentLinks = links;
+
+  clearBundledPaths();
+  state.bundleReady = false;
+  if (state.bundling) setBundleStatus('stale', '⚠ STALE — layout changed');
+
+  if (simulation) simulation.stop();
+
+  simulation = d3.forceSimulation(nodes)
+    .force('link',      d3.forceLink(links).id(d => d.id)
+                          .distance(state.linkDist)
+                          .strength(l => Math.min(state.linkStr, (l.weight || 1) / 10)))
+    .force('charge',    d3.forceManyBody().strength(state.charge))
+    .force('center',    d3.forceCenter(W / 2, H / 2))
+    .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + state.collision))
+    .alphaDecay(0.022)
+    .on('tick', ticked)
+    .on('end',  onSimEnd);
+
+  renderGraph();
+  updateStats();
+  updateLeaderboard();
+  updateLegend();
+  clearSelection();
+}
+
+function onSimEnd() {
+  if (state.bundling && !state.bundleReady) {
+    clearTimeout(simEndTimer);
+    simEndTimer = setTimeout(computeAndRenderBundles, 300);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Render graph elements (data join)
+// ═══════════════════════════════════════════════════════════════
+function renderGraph() {
+  const maxW = d3.max(currentLinks, l => l.weight) || 1;
+  const linksVisible = !(state.bundling && state.bundleReady);
+
+  // ── Straight lines ──
+  linkSel = g.select('.links').selectAll('line')
+    .data(currentLinks, d => {
+      const s = d.source?.id ?? d.source;
+      const t = d.target?.id ?? d.target;
+      return s + '↔' + t;
+    })
+    .join(
+      enter => enter.append('line')
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', d => 0.4 + (d.weight / maxW) * 2.5)
+        .style('opacity', 0)
+        .call(sel => sel.transition().duration(500)
+          .style('opacity', d => linksVisible
+            ? (state.weightOpacity ? 0.06 + (d.weight / maxW) * 0.36 : 0.18)
+            : 0)),
+      update => update
+        .attr('stroke-width', d => 0.4 + (d.weight / maxW) * 2.5)
+        .transition().duration(250)
+        .style('opacity', d => linksVisible
+          ? (state.weightOpacity ? 0.06 + (d.weight / maxW) * 0.36 : 0.18)
+          : 0),
+      exit => exit.transition().duration(200).style('opacity', 0).remove()
+    );
+
+  // ── Nodes ──
+  // KEY FIX: use .style('fill', ...) not .attr('fill', ...)
+  // CSS inline styles have higher specificity than SVG presentation attributes,
+  // preventing any inherited fill from overriding the community color.
+  nodeSel = g.select('.nodes').selectAll('circle')
+    .data(currentNodes, d => d.id)
+    .join(
+      enter => enter.append('circle')
+        .attr('r', 0)
+        .style('fill',   d => nodeColor(d))   // ← style(), not attr()
+        .style('stroke', '#000000')
+        .style('stroke-width', '0.8px')
+        .call(setupNodeInteraction)
+        .call(sel => sel.transition().duration(550)
+          .attr('r', d => nodeRadius(d))),
+      update => update
+        .style('fill', d => nodeColor(d))      // ← refresh color on update too
+        .transition().duration(300)
+        .attr('r', d => nodeRadius(d)),
+      exit => exit.transition().duration(200).attr('r', 0).remove()
+    );
+
+  // ── Labels ──
+  const labelData = state.showLabels ? currentNodes : [];
+  labelSel = g.select('.labels').selectAll('text')
+    .data(labelData, d => d.id)
+    .join(
+      enter => enter.append('text')
+        .attr('font-size', '9px')
+        .style('fill', '#cccccc')
+        .attr('text-anchor', 'middle')
+        .attr('dy', d => nodeRadius(d) + 10)
+        .attr('font-family', 'DM Sans, sans-serif')
+        .attr('pointer-events', 'none')
+        .style('opacity', 0)
+        .text(d => d.id)
+        .call(sel => sel.transition().duration(400).style('opacity', 0.65)),
+      update => update.text(d => d.id).attr('dy', d => nodeRadius(d) + 10),
+      exit   => exit.transition().duration(200).style('opacity', 0).remove()
+    );
+}
+
+// Update node positions each simulation tick
+function ticked() {
+  if (linkSel) linkSel
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+  if (nodeSel) nodeSel
+    .attr('cx', d => d.x)
+    .attr('cy', d => d.y);
+  if (labelSel) labelSel
+    .attr('x', d => d.x)
+    .attr('y', d => d.y);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Node interaction
+// ═══════════════════════════════════════════════════════════════
+const tooltip = document.getElementById('tooltip');
+
+function setupNodeInteraction(sel) {
+  sel
+    .style('cursor', 'pointer')
+    .on('mouseover', (ev, d) => {
+      document.getElementById('tt-name').textContent      = d.id;
+      document.getElementById('tt-comm').textContent      = d.communityLabel || '—';
+      document.getElementById('tt-degree').textContent    = d.degree;
+      document.getElementById('tt-weight').textContent    = d.totalWeight;
+      document.getElementById('tt-neighbors').textContent = (d.neighbors || []).slice(0, 5).join('\n') || '—';
+      moveTooltip(ev);
+      tooltip.classList.add('visible');
+    })
+    .on('mousemove', ev => moveTooltip(ev))
+    .on('mouseout',  ()  => tooltip.classList.remove('visible'))
+    .on('click',     (ev, d) => { ev.stopPropagation(); selectNode(d); })
+    .call(d3.drag()
+      .on('start', (ev, d) => {
+        if (!ev.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+        markStale();
+      })
+      .on('drag',  (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+      .on('end',   (ev, d) => {
+        if (!ev.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+    );
+}
+
+function moveTooltip(ev) {
+  const rect = document.getElementById('canvas-wrapper').getBoundingClientRect();
+  let x = ev.clientX - rect.left + 14;
+  let y = ev.clientY - rect.top  - 12;
+  if (x + 230 > rect.width) x = ev.clientX - rect.left - 234;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+}
+
+function selectNode(d) {
+  state.selectedNode = d.id;
+  const nbSet = new Set([d.id]);
+  currentLinks.forEach(l => {
+    const s = l.source?.id ?? l.source, t = l.target?.id ?? l.target;
+    if (s === d.id) nbSet.add(t);
+    if (t === d.id) nbSet.add(s);
+  });
+
+  // Dim everything outside ego network
+  nodeSel.transition().duration(180)
+    .style('opacity',      n  => nbSet.has(n.id) ? 1 : 0.07)
+    .style('stroke',       n  => n.id === d.id ? '#ffffff' : '#000000')
+    .style('stroke-width', n  => n.id === d.id ? '2.5px'   : '0.8px');
+
+  const maxW = d3.max(currentLinks, l => l.weight) || 1;
+  applyEdgeOpacity(l => {
+    const s = l.source?.id ?? l.source, t = l.target?.id ?? l.target;
+    return (nbSet.has(s) && nbSet.has(t))
+      ? (state.weightOpacity ? 0.18 + (l.weight / maxW) * 0.62 : 0.75)
+      : 0.025;
+  });
+  if (linkSel && state.bundling && state.bundleReady) linkSel.style('opacity', 0);
+
+  if (labelSel) labelSel.transition().duration(180)
+    .style('opacity', n => nbSet.has(n.id) ? 0.95 : 0.04);
+
+  // Update panel
+  document.getElementById('selected-info').classList.add('visible');
+  document.getElementById('sel-hint').style.display = 'none';
+  document.getElementById('sel-name').textContent    = d.id;
+  document.getElementById('sel-comm').textContent    = d.communityLabel || '—';
+  document.getElementById('sel-degree').textContent  = d.degree;
+  document.getElementById('sel-wt').textContent      = d.totalWeight;
+  document.getElementById('sel-nb').textContent      = (d.neighbors || []).length;
+  document.querySelectorAll('.lb-row').forEach(r =>
+    r.classList.toggle('active', r.dataset.id === d.id));
+}
+
+function clearSelection() {
+  state.selectedNode = null;
+  if (nodeSel) nodeSel.transition().duration(200)
+    .style('opacity', 1)
+    .style('stroke', '#000000')
+    .style('stroke-width', '0.8px');
+
+  const maxW = d3.max(currentLinks, l => l.weight) || 1;
+  applyEdgeOpacity(l => state.weightOpacity ? 0.06 + (l.weight / maxW) * 0.36 : 0.18);
+  if (linkSel && state.bundling && state.bundleReady) linkSel.style('opacity', 0);
+
+  if (labelSel) labelSel.transition().duration(200).style('opacity', 0.65);
+  document.getElementById('selected-info').classList.remove('visible');
+  document.getElementById('sel-hint').style.display = '';
+  document.querySelectorAll('.lb-row').forEach(r => r.classList.remove('active'));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Force update helpers
+// ═══════════════════════════════════════════════════════════════
+function updateForces() {
+  if (!simulation) return;
+  simulation
+    .force('charge',    d3.forceManyBody().strength(state.charge))
+    .force('link',      d3.forceLink(currentLinks).id(d => d.id)
+                          .distance(state.linkDist)
+                          .strength(l => Math.min(state.linkStr, (l.weight || 1) / 10)))
+    .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + state.collision))
+    .alpha(0.4).restart();
+  markStale();
+}
+
+function rebuildGraph() {
+  const { nodes, links } = buildGraph(state.rawEdges, state.weightMin);
+  currentNodes = nodes;
+  currentLinks = links;
+  clearBundledPaths();
+  state.bundleReady = false;
+  if (state.bundling) setBundleStatus('stale', '⚠ STALE — edges changed');
+
+  simulation.nodes(nodes);
+  simulation
+    .force('link',      d3.forceLink(links).id(d => d.id)
+                          .distance(state.linkDist)
+                          .strength(l => Math.min(state.linkStr, (l.weight || 1) / 10)))
+    .force('charge',    d3.forceManyBody().strength(state.charge))
+    .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + state.collision))
+    .alpha(0.9).restart();
+
+  renderGraph();
+  updateStats();
+  updateLeaderboard();
+  updateLegend();
+  clearSelection();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Stats
+// ═══════════════════════════════════════════════════════════════
+function computeStats(nodes, links) {
+  const n = nodes.length, e = links.length;
+  const density = n > 1 ? (2 * e) / (n * (n - 1)) : 0;
+  const par = {}; nodes.forEach(d => { par[d.id] = d.id; });
+  function find(x) { return par[x] === x ? x : (par[x] = find(par[x])); }
+  links.forEach(l => {
+    const s = typeof l.source === 'object' ? l.source.id : l.source;
+    const t = typeof l.target === 'object' ? l.target.id : l.target;
+    par[find(s)] = find(t);
+  });
+  const comps = new Set(nodes.map(d => find(d.id))).size;
+  const avgDeg = n > 0 ? (nodes.reduce((a, d) => a + d.degree, 0) / n).toFixed(2) : 0;
+  const maxDeg = nodes.reduce((a, b) => a.degree > b.degree ? a : b, { degree: 0 }).degree;
+  return {
+    n, e,
+    density: density < 0.001 ? density.toExponential(2) : density.toFixed(5),
+    comps, avgDeg, maxDeg,
+  };
+}
+
+function updateStats() {
+  const s = computeStats(currentNodes, currentLinks);
+  document.getElementById('st-nodes').textContent   = s.n.toLocaleString();
+  document.getElementById('st-edges').textContent   = s.e.toLocaleString();
+  document.getElementById('st-density').textContent = s.density;
+  document.getElementById('st-comps').textContent   = s.comps;
+  document.getElementById('st-avgdeg').textContent  = s.avgDeg;
+  document.getElementById('st-maxdeg').textContent  = s.maxDeg;
+}
+
+function updateLeaderboard() {
+  const sorted = [...currentNodes].sort((a, b) => b.degree - a.degree).slice(0, 12);
+  const maxDeg = sorted[0]?.degree || 1;
+  document.getElementById('leaderboard').innerHTML = sorted.map((d, i) => `
+    <div class="lb-row" data-id="${d.id}">
+      <span class="lb-rank">${i + 1}</span>
+      <span class="lb-name" title="${d.id}">${d.id}</span>
+      <div class="lb-bar"><div class="lb-bar-fill" style="width:${(d.degree / maxDeg * 100).toFixed(0)}%"></div></div>
+      <span class="lb-deg">${d.degree}</span>
+    </div>`).join('');
+  document.querySelectorAll('.lb-row').forEach(r =>
+    r.addEventListener('click', () => {
+      const nd = currentNodes.find(n => n.id === r.dataset.id);
+      if (nd) selectNode(nd);
+    }));
+}
+
+function updateLegend() {
+  const active = new Set(currentNodes.map(n => n.community));
+  const items  = [...COMMUNITIES, { id: -1, label: 'Custom / Unknown', color: '#888888' }]
+    .filter(c => active.has(c.id));
+  document.getElementById('legend').innerHTML = items.map(c => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${c.color}"></div>
+      <span>${c.label}</span>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Control bindings
+// ═══════════════════════════════════════════════════════════════
+function bindSlider(id, valId, key, fn) {
+  const el = document.getElementById(id);
+  const vl = document.getElementById(valId);
+  el.addEventListener('input', () => {
+    state[key] = parseFloat(el.value);
+    vl.textContent = el.value;
+    fn();
+  });
+}
+bindSlider('sl-weight',  'val-weight',  'weightMin',    rebuildGraph);
+bindSlider('sl-charge',  'val-charge',  'charge',       updateForces);
+bindSlider('sl-dist',    'val-dist',    'linkDist',      updateForces);
+bindSlider('sl-coll',    'val-coll',    'collision',    updateForces);
+bindSlider('sl-lstr',    'val-lstr',    'linkStr',      updateForces);
+bindSlider('sl-bstr',    'val-bstr',    'bundleStr',    markStale);
+bindSlider('sl-bcompat', 'val-bcompat', 'bundleCompat', markStale);
+bindSlider('sl-bcycles', 'val-bcycles', 'bundleCycles', markStale);
+
+document.getElementById('sel-size').addEventListener('change', ev => {
+  state.sizeMetric = ev.target.value;
+  if (nodeSel) nodeSel.transition().duration(300).attr('r', d => nodeRadius(d));
+  if (labelSel) labelSel.transition().duration(300).attr('dy', d => nodeRadius(d) + 10);
+  updateForces();
+});
+
+document.getElementById('tog-labels').addEventListener('change', () => {
+  state.showLabels = document.getElementById('tog-labels').checked;
+  renderGraph();
+});
+document.getElementById('tog-colors').addEventListener('change', () => {
+  state.communityColors = document.getElementById('tog-colors').checked;
+  if (nodeSel) nodeSel.transition().duration(300).style('fill', d => nodeColor(d));
+});
+document.getElementById('tog-opacity').addEventListener('change', () => {
+  state.weightOpacity = document.getElementById('tog-opacity').checked;
+  const maxW = d3.max(currentLinks, l => l.weight) || 1;
+  applyEdgeOpacity(l => state.weightOpacity ? 0.06 + (l.weight / maxW) * 0.36 : 0.18);
+});
+
+// ── Bundle toggle ──
+document.getElementById('tog-bundle').addEventListener('change', ev => {
+  state.bundling = ev.target.checked;
+  document.getElementById('bundle-controls').classList.toggle('disabled', !state.bundling);
+
+  if (state.bundling) {
+    setBundleStatus('stale', '⚠ Waiting to settle…');
+    if (simulation.alpha() < 0.005) {
+      computeAndRenderBundles();
+    }
+  } else {
+    state.bundleReady = false;
+    clearBundledPaths();
+    showStraightLinks();
+    setBundleStatus('', 'OFF');
+    hideOverlay();
+  }
+});
+
+document.getElementById('btn-recompute').addEventListener('click', () => {
+  if (state.bundling) computeAndRenderBundles();
+});
+
+// ── Search ──
+document.getElementById('search-box').addEventListener('input', ev => {
+  const q = ev.target.value.toLowerCase().trim();
+  if (!q) { clearSelection(); return; }
+  const found = currentNodes.find(n => n.id.toLowerCase().includes(q));
+  if (found) selectNode(found);
+});
+
+// ── Actions ──
+document.getElementById('btn-reset-layout').addEventListener('click', () => {
+  currentNodes.forEach(d => { d.fx = null; d.fy = null; d.x = undefined; d.y = undefined; });
+  buildSimulation();
+});
+
+document.getElementById('btn-upload').addEventListener('click', () =>
+  document.getElementById('file-input').click());
+
+document.getElementById('file-input').addEventListener('change', ev => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: result => {
+      const rows = result.data;
+      if (!rows.length) { alert('Empty CSV.'); return; }
+      const keys   = Object.keys(rows[0]);
+      const srcKey = keys.find(k => /source|src|from|node1|^a$/i.test(k)) || keys[0];
+      const tgtKey = keys.find(k => /target|tgt|to|node2|^b$/i.test(k))   || keys[1];
+      const wKey   = keys.find(k => /weight|w|count|val/i.test(k))         || keys[2];
+      const edges  = rows
+        .map(r => ({
+          source: String(r[srcKey] || '').trim(),
+          target: String(r[tgtKey] || '').trim(),
+          weight: parseFloat(r[wKey] || 1) || 1,
+        }))
+        .filter(e => e.source && e.target && e.source !== e.target);
+      if (!edges.length) { alert('No valid edges found. Columns: ' + keys.join(', ')); return; }
+      state.rawEdges = edges;
+      state.isCustom = true;
+      document.getElementById('data-badge').textContent = file.name.slice(0, 20);
+      document.getElementById('btn-reset-data').style.display = '';
+      buildSimulation();
+    },
+    error: err => alert('Parse error: ' + err.message),
+  });
+  ev.target.value = '';
+});
+
+document.getElementById('btn-reset-data').addEventListener('click', () => {
+  state.rawEdges = generateSeedEdges();
+  state.isCustom = false;
+  document.getElementById('data-badge').textContent = 'SEED DATA';
+  document.getElementById('btn-reset-data').style.display = 'none';
+  buildSimulation();
+});
+
+// ── Resize ──
+window.addEventListener('resize', () => {
+  const wrap = document.getElementById('canvas-wrapper');
+  svg.attr('width', wrap.clientWidth).attr('height', wrap.clientHeight);
+  if (simulation) {
+    simulation
+      .force('center', d3.forceCenter(wrap.clientWidth / 2, wrap.clientHeight / 2))
+      .alpha(0.2).restart();
+    markStale();
+  }
+});
+
+// ── Boot ──
+window.addEventListener('DOMContentLoaded', () => {
+  initSVG();
+  buildSimulation();
+});
+</script>
+</body>
+</html>
