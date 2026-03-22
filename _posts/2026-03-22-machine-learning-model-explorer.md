@@ -25,7 +25,7 @@ This post briefly discusses the newest feature introduction to this site: a comp
 ---
 
 ## 🌐 Live Demo  
-🔗 **Try it here:** [Click Me!]("docotorofdata.github.io/projects/machine-learning-model-explorer/")
+🔗 **Try it here:** [Click Me!](https://doctorofdata.github.io/projects/machine-learning-model-explorer/)
 
 ---
 
