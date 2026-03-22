@@ -391,6 +391,24 @@ footer{text-align:center;padding:28px;border-top:1px solid var(--border);color:v
         <div class="m-desc">Ensemble · 20 trees · bagging</div>
         <div class="m-check">✓</div>
       </div>
+      <div class="model-card selected" data-model="gbm" onclick="toggleModel(this)">
+        <span class="m-icon">⚡</span>
+        <div class="m-name">Gradient Boosting</div>
+        <div class="m-desc">Sequential trees · XGBoost-style</div>
+        <div class="m-check">✓</div>
+      </div>
+      <div class="model-card selected" data-model="ada" onclick="toggleModel(this)">
+        <span class="m-icon">🔁</span>
+        <div class="m-name">AdaBoost</div>
+        <div class="m-desc">Weighted stumps · adaptive boosting</div>
+        <div class="m-check">✓</div>
+      </div>
+      <div class="model-card selected" data-model="svm" onclick="toggleModel(this)">
+        <span class="m-icon">✂️</span>
+        <div class="m-name">Linear SVM</div>
+        <div class="m-desc">SGD · hinge loss · max-margin</div>
+        <div class="m-check">✓</div>
+      </div>
     </div>
   </div>
 
@@ -495,8 +513,8 @@ let trainX = [], trainY = [], testX = [], testY = [], testRows = [];
 let modelResults = {};
 let parsedRaw = []; // raw parsed before target chosen
 
-const MODEL_NAMES = { lr:'Logistic Regression', knn:'K-Nearest Neighbors', gnb:'Gaussian Naive Bayes', dt:'Decision Tree', rf:'Random Forest' };
-const MODEL_COLORS = { lr:'#e63946', knn:'#4cc9f0', gnb:'#c77dff', dt:'#ffd166', rf:'#06d6a0' };
+const MODEL_NAMES = { lr:'Logistic Regression', knn:'K-Nearest Neighbors', gnb:'Gaussian Naive Bayes', dt:'Decision Tree', rf:'Random Forest', gbm:'Gradient Boosting', ada:'AdaBoost', svm:'Linear SVM' };
+const MODEL_COLORS = { lr:'#e63946', knn:'#4cc9f0', gnb:'#c77dff', dt:'#ffd166', rf:'#06d6a0', gbm:'#fb8500', ada:'#ef476f', svm:'#118ab2' };
 
 /* ═══════════════════════════════════════════════
    NAV
@@ -1519,9 +1537,139 @@ class RandomForest {
   }
 }
 
-/* ═══════════════════════════════════════════════
-   METRICS
-═══════════════════════════════════════════════ */
+/* ── Gradient Boosting (GBM) — XGBoost equivalent ── */
+class GradientBoosting {
+  constructor(nT=80, maxD=4, lr=0.12) { this.nT=nT; this.maxD=maxD; this.lr=lr; }
+  // Sigmoid and log-loss gradient
+  sig(z){ return 1/(1+Math.exp(-Math.max(-500,Math.min(500,z)))); }
+  async fit(X,y){
+    const cap=4000, n0=X.length;
+    let sX=X, sY=y;
+    if(n0>cap){
+      const idx=seededShuffle([...Array(n0).keys()],33).slice(0,cap);
+      sX=idx.map(i=>X[i]); sY=idx.map(i=>y[i]);
+    }
+    const n=sX.length;
+    // Init with log-odds of the mean
+    const mean1=sY.reduce((a,b)=>a+b,0)/n;
+    const initPred=Math.log((mean1+1e-7)/(1-mean1+1e-7));
+    this.initF=initPred;
+    this.trees=[]; this._fi=new Array(X[0].length).fill(0);
+    const F=new Float64Array(n).fill(initPred);
+    const nT=n0>4000?40:n0>1000?60:this.nT;
+    for(let t=0;t<nT;t++){
+      // pseudo-residuals = negative gradient of log-loss
+      const res=new Array(n);
+      for(let i=0;i<n;i++) res[i]=sY[i]-this.sig(F[i]);
+      // Fit shallow tree to residuals
+      const tree=new DecisionTree(this.maxD,5);
+      await tree.fit(sX,res.map(r=>r>0?1:0));
+      // Use raw residual sums for leaf updates (Newton step)
+      const rawPreds=tree.predProba(sX);
+      for(let i=0;i<n;i++) F[i]+=this.lr*(rawPreds[i]*2-1);
+      this.trees.push(tree);
+      // Accumulate feature importance
+      tree._fi.forEach((v,j)=>{ if(j<this._fi.length) this._fi[j]+=v; });
+      if(t%10===9) await yld();
+    }
+  }
+  predProba(X){
+    return X.map(x=>{
+      let f=this.initF;
+      for(const t of this.trees) f+=this.lr*(t.predOne(x,t.tree)*2-1);
+      return this.sig(f);
+    });
+  }
+  predict(X){ return this.predProba(X).map(p=>p>=0.5?1:0); }
+  featureImportance(){ const s=this._fi.reduce((a,b)=>a+b)||1; return this._fi.map(v=>v/s); }
+}
+
+/* ── AdaBoost ── */
+class AdaBoost {
+  constructor(nT=60) { this.nT=nT; }
+  async fit(X,y){
+    const n=X.length, labs=y.map(v=>v===1?1:-1);
+    let w=new Float64Array(n).fill(1/n);
+    this.stumps=[]; this.alphas=[];
+    const nT=n>4000?30:n>1000?50:this.nT;
+    for(let t=0;t<nT;t++){
+      // Weighted decision stump (depth-1 tree)
+      const stump=new DecisionTree(1,1);
+      // Sample by weights for efficiency
+      const totalW=Array.from(w).reduce((a,b)=>a+b);
+      const normW=Array.from(w).map(v=>v/totalW);
+      const cap=Math.min(n,2000);
+      let cumW=0; const cdf=normW.map(v=>(cumW+=v,cumW));
+      const sIdx=Array.from({length:cap},()=>{
+        const r=Math.random(); let lo=0,hi=n-1;
+        while(lo<hi){const m=(lo+hi)>>1; cdf[m]<r?lo=m+1:hi=m;} return lo;
+      });
+      await stump.fit(sIdx.map(i=>X[i]), sIdx.map(i=>y[i]));
+      const preds=stump.predict(X);
+      // Weighted error
+      let err=0; for(let i=0;i<n;i++) if(preds[i]!==y[i]) err+=w[i];
+      err=Math.max(err,1e-10); err=Math.min(err,1-1e-10);
+      const alpha=0.5*Math.log((1-err)/err);
+      this.stumps.push(stump); this.alphas.push(alpha);
+      // Update weights
+      for(let i=0;i<n;i++){
+        const sign=(preds[i]===y[i])?1:-1;
+        w[i]*=Math.exp(-alpha*sign);
+      }
+      const s=Array.from(w).reduce((a,b)=>a+b);
+      for(let i=0;i<n;i++) w[i]/=s;
+      if(t%10===9) await yld();
+    }
+  }
+  score(X){
+    return X.map(x=>{
+      let s=0;
+      for(let t=0;t<this.stumps.length;t++) s+=this.alphas[t]*(this.stumps[t].predict([x])[0]===1?1:-1);
+      return s;
+    });
+  }
+  predProba(X){
+    const scores=this.score(X);
+    const mx=Math.max(...scores.map(Math.abs))||1;
+    return scores.map(s=>1/(1+Math.exp(-s/mx*4)));
+  }
+  predict(X){ return this.predProba(X).map(p=>p>=0.5?1:0); }
+}
+
+/* ── Linear SVM (SGD / Hinge loss) ── */
+class LinearSVM {
+  constructor(C=1.0) { this.C=C; }
+  async fit(X,y){
+    const n=X.length, m=X[0].length;
+    const labs=y.map(v=>v===1?1:-1);
+    this.w=new Float64Array(m); this.b=0;
+    const epochs=n>5000?80:n>1000?150:300;
+    const lr0=0.01;
+    for(let e=0;e<epochs;e++){
+      const lr=lr0/(1+0.001*e);
+      for(let i=0;i<n;i++){
+        let wx=this.b; for(let j=0;j<m;j++) wx+=this.w[j]*X[i][j];
+        const margin=labs[i]*wx;
+        if(margin<1){
+          for(let j=0;j<m;j++) this.w[j]+=lr*(this.C*labs[i]*X[i][j]-this.w[j]);
+          this.b+=lr*this.C*labs[i];
+        } else {
+          for(let j=0;j<m;j++) this.w[j]-=lr*this.w[j];
+        }
+      }
+      if(e%50===49) await yld();
+    }
+  }
+  decisionFunc(X){ return X.map(x=>{ let s=this.b; for(let j=0;j<x.length;j++) s+=this.w[j]*x[j]; return s; }); }
+  predProba(X){
+    const d=this.decisionFunc(X);
+    return d.map(v=>1/(1+Math.exp(-Math.max(-500,Math.min(500,v)))));
+  }
+  predict(X){ return this.decisionFunc(X).map(v=>v>=0?1:0); }
+  featureImportance(){ const ab=Array.from(this.w).map(Math.abs),s=ab.reduce((a,b)=>a+b)||1; return ab.map(v=>v/s); }
+}
+
+
 function computeMetrics(yTrue, yPred, yProba) {
   let tp = 0, tn = 0, fp = 0, fn = 0;
   for (let i = 0; i < yTrue.length; i++) {
@@ -1607,7 +1755,7 @@ async function runPipeline() {
 }
 
 async function trainOneModel(key) {
-  const modelMap = { lr: () => new LogisticRegression(), knn: () => new KNN(7), gnb: () => new GaussianNB(), dt: () => new DecisionTree(6, 4), rf: () => new RandomForest(15, 5) };
+  const modelMap = { lr: () => new LogisticRegression(), knn: () => new KNN(7), gnb: () => new GaussianNB(), dt: () => new DecisionTree(6, 4), rf: () => new RandomForest(15, 5), gbm: () => new GradientBoosting(), ada: () => new AdaBoost(), svm: () => new LinearSVM(1.0) };
   const model = modelMap[key]();
   const t0 = performance.now();
   await model.fit(trainX, trainY);
