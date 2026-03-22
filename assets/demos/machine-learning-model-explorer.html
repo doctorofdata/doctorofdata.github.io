@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Classification Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+:root{
+  --bg:#07090e;--surface:#0d1623;--card:#111e30;--card2:#162234;
+  --border:#1d3050;--border2:#24405e;
+  --red:#e63946;--red2:#ff6b78;--blue:#4cc9f0;--teal:#06d6a0;
+  --amber:#ffd166;--purple:#c77dff;
+  --text:#d4e5f0;--text2:#8ba8bc;--muted:#4a6578;
+  --font-d:'Rajdhani',sans-serif;--font-b:'Nunito',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --r:10px;--r2:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+a{color:var(--blue);text-decoration:none}
+h1,h2,h3,h4,h5{font-family:var(--font-d);letter-spacing:.04em}
+.mono{font-family:var(--font-m)}
+
+/* ── HEADER ── */
+header{position:relative;background:linear-gradient(160deg,#0a0f1e 0%,#0d1825 60%,#091520 100%);border-bottom:1px solid var(--border);overflow:hidden;padding:48px 24px 40px}
+.hdr-inner{max-width:960px;margin:0 auto;position:relative;z-index:2}
+.hdr-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(76,201,240,.1);border:1px solid rgba(76,201,240,.28);border-radius:20px;padding:4px 14px;font-family:var(--font-d);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:20px}
+header h1{font-size:clamp(32px,5vw,54px);font-weight:700;line-height:1.05;margin-bottom:14px;background:linear-gradient(120deg,#fff 0%,var(--blue) 55%,var(--teal) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header p{font-size:15px;color:var(--text2);max-width:660px;font-weight:400;line-height:1.7}
+.hdr-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.tag{background:rgba(76,201,240,.07);border:1px solid rgba(76,201,240,.18);border-radius:20px;padding:3px 12px;font-size:12px;font-family:var(--font-d);letter-spacing:.06em;color:var(--blue)}
+.hdr-grid{position:absolute;top:0;left:0;right:0;bottom:0;background-image:linear-gradient(rgba(76,201,240,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(76,201,240,.035) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.hdr-glow{position:absolute;top:-80px;right:-60px;width:340px;height:340px;background:radial-gradient(circle,rgba(76,201,240,.08) 0%,transparent 70%);pointer-events:none}
+
+/* ── PIPELINE NAV ── */
+.pipeline-nav{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;padding:0 24px}
+.pipeline-inner{max-width:960px;margin:0 auto;display:flex;overflow-x:auto;scrollbar-width:none}
+.pipeline-inner::-webkit-scrollbar{display:none}
+.step-btn{display:flex;align-items:center;gap:10px;padding:14px 18px;border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;font-family:var(--font-d);font-size:14px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);transition:all .2s}
+.step-btn:hover{color:var(--text2)}
+.step-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.step-btn.done{color:var(--teal)}
+.step-btn.done .step-num{background:var(--teal);color:#000}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--font-m);transition:all .2s;flex-shrink:0}
+.step-btn.active .step-num{background:var(--blue);color:#000}
+
+/* ── MAIN ── */
+main{max-width:960px;margin:0 auto;padding:32px 24px 80px}
+.step-panel{display:none;animation:fadeIn .3s ease}
+.step-panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── SECTION HEADERS ── */
+.section-head{margin-bottom:24px}
+.section-head h2{font-size:28px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:12px}
+.section-head h2 .icon{font-size:26px}
+.section-head p{color:var(--text2);margin-top:6px;font-size:14px}
+.divider{height:1px;background:linear-gradient(90deg,var(--border),transparent);margin:28px 0}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px}
+.card-sm{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px}
+.card-grid{display:grid;gap:14px}
+.card-grid-2{grid-template-columns:repeat(2,1fr)}
+.card-grid-3{grid-template-columns:repeat(3,1fr)}
+@media(max-width:600px){.card-grid-2,.card-grid-3{grid-template-columns:1fr}}
+
+/* ── UPLOAD ── */
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--r);padding:52px 24px;text-align:center;cursor:pointer;transition:all .25s;background:rgba(76,201,240,.02)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:rgba(76,201,240,.06)}
+.upload-zone .icon-big{font-size:44px;margin-bottom:14px;display:block}
+.upload-zone h3{font-family:var(--font-d);font-size:22px;color:var(--text)}
+.upload-zone p{color:var(--text2);font-size:13px;margin-top:6px;line-height:1.5}
+
+/* ── TARGET PICKER ── */
+.target-picker{background:var(--card2);border:1px solid var(--border2);border-radius:var(--r);padding:22px;margin-top:18px}
+.target-picker h3{font-family:var(--font-d);font-size:18px;margin-bottom:6px}
+.target-picker p{font-size:13px;color:var(--text2);margin-bottom:14px}
+.col-picker-grid{display:flex;flex-wrap:wrap;gap:8px}
+.col-pill{padding:7px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);font-family:var(--font-m);font-size:12px;cursor:pointer;transition:all .18s;color:var(--text2)}
+.col-pill:hover{border-color:var(--blue);color:var(--blue)}
+.col-pill.selected-target{border-color:var(--teal);background:rgba(6,214,160,.1);color:var(--teal);font-weight:600}
+.col-pill.selected-feature{border-color:var(--border);background:rgba(76,201,240,.05);color:var(--text2)}
+.col-pill.feat-on{border-color:var(--teal);background:rgba(6,214,160,.1);color:var(--teal);font-weight:500}
+.col-pill.feat-off{border-color:var(--border);background:transparent;color:var(--muted);text-decoration:line-through}
+.col-pill.excluded{opacity:.35;text-decoration:line-through;cursor:default}
+/* positive-class buttons */
+.posclass-btn{padding:8px 20px;border-radius:6px;border:2px solid var(--border2);background:var(--surface);font-family:var(--font-m);font-size:13px;cursor:pointer;transition:all .18s;color:var(--text2)}
+.posclass-btn:hover{border-color:var(--red);color:var(--red)}
+.posclass-btn.selected{border-color:var(--red);background:rgba(230,57,70,.12);color:var(--red);font-weight:600}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border-radius:var(--r2);border:none;cursor:pointer;font-family:var(--font-d);font-size:14px;font-weight:600;letter-spacing:.06em;transition:all .18s}
+.btn-primary{background:var(--blue);color:#000}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 4px 14px rgba(76,201,240,.35)}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-teal{background:var(--teal);color:#000}
+.btn-teal:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.btn:disabled{opacity:.38;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r2);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-family:var(--font-m);font-size:12px}
+thead{background:var(--surface)}
+th{padding:10px 12px;text-align:left;color:var(--text2);font-weight:500;letter-spacing:.05em;text-transform:uppercase;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid rgba(29,48,80,.5);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(76,201,240,.04)}
+
+/* ── STAT CHIPS ── */
+.stat-chip{background:var(--card2);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px}
+.stat-chip .s-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-d)}
+.stat-chip .s-value{font-family:var(--font-m);font-size:20px;margin-top:2px}
+
+/* ── PREPROCESS ── */
+.feat-row{display:grid;grid-template-columns:minmax(140px,200px) 1fr 200px;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(29,48,80,.5);transition:background .15s}
+.feat-row:hover{background:rgba(76,201,240,.03)}
+.feat-row:last-child{border-bottom:none}
+.feat-name{font-family:var(--font-d);font-size:14px;font-weight:600;color:var(--text)}
+.feat-meta{font-size:11px;color:var(--muted);font-family:var(--font-m);margin-top:2px}
+.feat-bar-wrap{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.feat-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--teal));border-radius:3px;transition:width .4s}
+.feat-select{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:5px 10px;color:var(--text);font-family:var(--font-m);font-size:12px;cursor:pointer;width:100%}
+.feat-select:focus{outline:none;border-color:var(--blue)}
+.feat-select option{background:var(--surface)}
+@media(max-width:600px){.feat-row{grid-template-columns:1fr 1fr;gap:8px}.feat-bar-wrap{display:none}}
+
+/* ── MODEL CARDS ── */
+.model-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(162px,1fr));gap:12px}
+.model-card{background:var(--card2);border:2px solid var(--border);border-radius:var(--r);padding:16px;cursor:pointer;transition:all .2s;user-select:none}
+.model-card:hover{border-color:var(--border2)}
+.model-card.selected{border-color:var(--blue);background:rgba(76,201,240,.07)}
+.model-card .m-icon{font-size:28px;margin-bottom:8px;display:block}
+.model-card .m-name{font-family:var(--font-d);font-size:15px;font-weight:700;color:var(--text)}
+.model-card .m-desc{font-size:11px;color:var(--muted);margin-top:3px}
+.model-card .m-check{width:16px;height:16px;border-radius:3px;border:2px solid var(--border2);margin-top:10px;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .2s}
+.model-card.selected .m-check{background:var(--blue);border-color:var(--blue);color:#000}
+
+/* ── SLIDER ── */
+.slider-wrap{display:flex;align-items:center;gap:14px}
+.slider-wrap input[type=range]{-webkit-appearance:none;flex:1;height:6px;background:var(--border);border-radius:3px;outline:none}
+.slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);cursor:pointer;border:2px solid var(--bg)}
+
+/* ── TRAINING ── */
+.training-item{padding:12px 0;border-bottom:1px solid rgba(29,48,80,.5);display:flex;align-items:center;gap:14px}
+.training-item:last-child{border-bottom:none}
+.training-label{font-family:var(--font-d);font-size:14px;font-weight:600;min-width:180px}
+.training-status{font-size:12px;font-family:var(--font-m);color:var(--muted);min-width:140px;text-align:right}
+.training-status.done{color:var(--teal)}
+.progress-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .4s;background:linear-gradient(90deg,var(--blue),var(--teal))}
+
+/* ── RESULTS ── */
+.results-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.results-kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center}
+.results-kpi .kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;font-family:var(--font-d);letter-spacing:.08em}
+.results-kpi .kpi-val{font-family:var(--font-m);font-size:26px;font-weight:500;margin-top:4px}
+.results-kpi .kpi-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.results-tbl td{font-family:var(--font-m);font-size:13px}
+.best-row td{background:rgba(6,214,160,.05)!important}
+.best-row td:first-child{border-left:3px solid var(--teal)}
+.metric-high{color:var(--teal)}.metric-mid{color:var(--amber)}.metric-low{color:var(--red)}
+.badge-best{background:linear-gradient(120deg,var(--teal),#00a87e);color:#000;font-size:11px;font-family:var(--font-d);font-weight:700;padding:2px 8px;border-radius:3px;letter-spacing:.06em}
+
+/* ── CONFUSION MATRIX ── */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:160px}
+.cm-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 6px;border-radius:4px;font-family:var(--font-m)}
+.cm-tp{background:rgba(6,214,160,.16);border:1px solid rgba(6,214,160,.28)}
+.cm-tn{background:rgba(76,201,240,.1);border:1px solid rgba(76,201,240,.22)}
+.cm-fp{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.22)}
+.cm-fn{background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.18)}
+.cm-num{font-size:20px;font-weight:500;line-height:1}
+.cm-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-top:3px}
+
+/* ── CHARTS ── */
+.chart-box{background:var(--card2);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.chart-box h4{font-family:var(--font-d);font-size:16px;color:var(--text2);margin-bottom:14px;letter-spacing:.06em}
+.chart-canvas-wrap{position:relative;height:260px}
+
+/* ── FEATURE IMPORTANCE ── */
+.fi-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.fi-label{font-family:var(--font-m);font-size:11px;color:var(--text2);min-width:150px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fi-bg{flex:1;height:14px;background:var(--border);border-radius:3px;overflow:hidden}
+.fi-fill{height:100%;border-radius:3px;transition:width .6s ease;background:linear-gradient(90deg,var(--blue),var(--purple))}
+.fi-pct{font-family:var(--font-m);font-size:11px;color:var(--muted);min-width:36px}
+
+/* ── MISC ── */
+.label-sm{font-size:12px;font-family:var(--font-d);letter-spacing:.07em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;display:block}
+.info-box{background:rgba(76,201,240,.06);border:1px solid rgba(76,201,240,.2);border-radius:var(--r2);padding:12px 16px;font-size:13px;color:var(--text2);line-height:1.65}
+.info-box strong{color:var(--blue)}
+.warn-box{background:rgba(255,209,102,.05);border:1px solid rgba(255,209,102,.2);border-radius:var(--r2);padding:12px 16px;font-size:13px;color:#f0d085;line-height:1.65}
+.warn-box strong{color:var(--amber)}
+.empty-state{text-align:center;padding:52px 24px;color:var(--muted)}
+.empty-state .e-icon{font-size:38px;margin-bottom:12px;display:block}
+.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.type-badge{display:inline-block;font-family:var(--font-m);font-size:10px;padding:1px 7px;border-radius:3px;margin-left:6px}
+
+/* ── TYPE CLASSIFICATION TABLE ── */
+.ftype-table{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.ftype-row{display:grid;grid-template-columns:20px minmax(120px,180px) 1fr 170px;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(29,48,80,.45);transition:background .15s}
+.ftype-row:last-child{border-bottom:none}
+.ftype-row:hover{background:rgba(76,201,240,.03)}
+.ftype-row.excluded-row{opacity:.42}
+.ftype-row.excluded-row .ftype-name{text-decoration:line-through;color:var(--muted)}
+.ftype-name{font-family:var(--font-d);font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftype-samples{font-family:var(--font-m);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftype-select{background:var(--surface);border:2px solid var(--border2);border-radius:var(--r2);padding:5px 10px;color:var(--text);font-family:var(--font-m);font-size:12px;cursor:pointer;width:100%;transition:border-color .15s}
+.ftype-select:focus{outline:none}
+.ftype-select.type-numeric{border-color:rgba(76,201,240,.6);color:var(--blue)}
+.ftype-select.type-categorical{border-color:rgba(199,125,255,.6);color:var(--purple)}
+.ftype-select.type-ordinal{border-color:rgba(255,209,102,.5);color:var(--amber)}
+.ftype-check{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+.ftype-header{display:grid;grid-template-columns:20px minmax(120px,180px) 1fr 170px;gap:12px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border)}
+.ftype-header span{font-family:var(--font-d);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+@media(max-width:580px){.ftype-row,.ftype-header{grid-template-columns:20px 1fr 130px;}.ftype-samples{display:none}}
+.type-num{background:rgba(76,201,240,.12);color:var(--blue)}
+.type-cat{background:rgba(199,125,255,.12);color:var(--purple)}
+.type-bin{background:rgba(6,214,160,.12);color:var(--teal)}
+
+footer{text-align:center;padding:28px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="hdr-grid"></div>
+  <div class="hdr-glow"></div>
+  <div class="hdr-inner">
+    <div class="hdr-pill">⚡ Interactive · Browser-Based · Zero Install</div>
+    <h1>ML Classification<br>Pipeline</h1>
+    <p>Upload any labeled CSV dataset, engineer features with per-column scaling and transformations, then train and compare multiple classification models with detailed performance analysis — entirely in your browser.</p>
+    <div class="hdr-tags">
+      <span class="tag">Logistic Regression</span>
+      <span class="tag">K-NN</span>
+      <span class="tag">Naive Bayes</span>
+      <span class="tag">Decision Tree</span>
+      <span class="tag">Random Forest</span>
+      <span class="tag">ROC · AUC · F1 · Confusion Matrix</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── NAV ── -->
+<nav class="pipeline-nav">
+  <div class="pipeline-inner">
+    <button class="step-btn active" onclick="goStep(1)" id="nav1"><span class="step-num">1</span> Data Input</button>
+    <button class="step-btn" onclick="goStep(2)" id="nav2"><span class="step-num">2</span> Explore</button>
+    <button class="step-btn" onclick="goStep(3)" id="nav3"><span class="step-num">3</span> Preprocess</button>
+    <button class="step-btn" onclick="goStep(4)" id="nav4"><span class="step-num">4</span> Configure</button>
+    <button class="step-btn" onclick="goStep(5)" id="nav5"><span class="step-num">5</span> Train</button>
+    <button class="step-btn" onclick="goStep(6)" id="nav6"><span class="step-num">6</span> Results</button>
+    <button class="step-btn" onclick="goStep(7)" id="nav7"><span class="step-num">7</span> Predict</button>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<main>
+
+<!-- STEP 1: DATA INPUT -->
+<div class="step-panel active" id="panel1">
+  <div class="section-head">
+    <h2><span class="icon">📥</span> Load Your Dataset</h2>
+    <p>Upload any CSV with a binary classification target column. After loading, you'll select which column is the target and which are features.</p>
+  </div>
+
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <span class="icon-big">📂</span>
+    <h3>Drop a CSV file here or click to browse</h3>
+    <p>Any CSV with a header row and a binary target column (0/1, yes/no, true/false, or two distinct text labels).<br>
+    Numeric and low-cardinality categorical features are both supported.</p>
+  </div>
+  <input type="file" id="fileInput" accept=".csv" style="display:none">
+
+  <!-- two-phase column setup — shown after load -->
+  <div id="targetPickerWrap" style="display:none">
+
+    <!-- Phase 1: target -->
+    <div class="target-picker" style="margin-bottom:14px">
+      <h3>🎯 Step 1 of 2 — Select the Target Column</h3>
+      <p>Click the column you want to predict. Index-like columns are automatically hidden. Columns with more than 2 unique values cannot be used as the target.</p>
+      <div id="indexDropNote" style="display:none;margin-bottom:10px" class="warn-box"></div>
+      <div class="col-picker-grid" id="colPickerGrid"></div>
+      <div id="targetHint" style="margin-top:12px;font-size:13px;color:var(--text2)"></div>
+      <!-- Positive class selector — populated when target chosen -->
+      <div id="posClassPicker" style="display:none;margin-top:14px">
+        <div class="label-sm" style="margin-bottom:8px">Which class is the <strong style="color:var(--red)">Positive (1)</strong> label?</div>
+        <div id="posClassBtns" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)">The other class will be mapped to 0. This affects how Precision, Recall and confusion matrix TP/FP/FN/TN are reported.</div>
+      </div>
+    </div>
+
+    <!-- Phase 2: feature type classification (hidden until target chosen) -->
+    <div class="target-picker" id="featurePickerSection" style="display:none">
+      <h3>📐 Step 2 of 2 — Classify Feature Columns</h3>
+      <p>Set the data type for each column. The auto-detected type is shown as a suggestion — <strong>override it if it's wrong</strong> (e.g. coded integers like <em>Sex=0/1</em> or <em>Grade=1–4</em> should be <em>Categorical</em>, not Numeric). Uncheck a column to exclude it from modeling.</p>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="setAllFeatures(true)">✓ Include All</button>
+        <button class="btn btn-outline btn-sm" onclick="setAllFeatures(false)">✗ Exclude All</button>
+        <button class="btn btn-outline btn-sm" onclick="setAllNumeric()">## All Numeric</button>
+        <button class="btn btn-outline btn-sm" onclick="setAllCategorical()">⊞ All Categorical</button>
+      </div>
+      <div id="featureTypeTable"></div>
+      <div id="featureHint" style="margin-top:12px;font-size:13px;color:var(--text2)"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="confirmTargetBtn" onclick="confirmTarget()" disabled>Confirm &amp; Explore →</button>
+    </div>
+  </div>
+
+  <div id="loadMsg" style="display:none;margin-top:14px" class="info-box"><strong id="loadMsgText"></strong></div>
+
+  <div class="divider"></div>
+  <div class="info-box">
+    <strong>Supported formats:</strong> Standard CSV with a header row. Binary targets may be encoded as numbers (0/1), booleans (true/false), or any two distinct text values (e.g. "Yes"/"No", "Presence"/"Absence", "Benign"/"Malignant"). Feature columns should be numeric or low-cardinality categorical (≤12 unique values — these are one-hot encoded automatically).
+  </div>
+</div>
+
+<!-- STEP 2: EXPLORE -->
+<div class="step-panel" id="panel2">
+  <div class="section-head">
+    <h2><span class="icon">🔍</span> Explore Data</h2>
+    <p>Preview rows, inspect statistics, and understand class balance before modeling.</p>
+  </div>
+  <div id="exploreContent"><div class="empty-state"><span class="e-icon">📭</span><p>Load data in Step 1 first</p></div></div>
+</div>
+
+<!-- STEP 3: PREPROCESS -->
+<div class="step-panel" id="panel3">
+  <div class="section-head">
+    <h2><span class="icon">⚙️</span> Feature Preprocessing</h2>
+    <p>Choose a scaling or transformation for each numeric feature. Defaults are suggested based on each column's distribution.</p>
+  </div>
+  <div class="info-box" style="margin-bottom:18px">
+    <strong>Tip:</strong> Distance-based models (Logistic Regression, K-NN) benefit from <strong>StandardScaler</strong> or <strong>MinMaxScaler</strong> on continuous features. Tree-based models (Decision Tree, Random Forest) are scale-invariant. Skewed distributions may benefit from <strong>Log1p</strong> or <strong>Sqrt</strong>.
+  </div>
+  <div id="preprocessContent"><div class="empty-state"><span class="e-icon">📭</span><p>Load data in Step 1 first</p></div></div>
+  <div id="preprocessBtn" style="display:none">
+    <div class="btn-row">
+      <button class="btn btn-teal" onclick="applyPreprocess()">✓ Apply & Continue to Configure →</button>
+      <button class="btn btn-outline btn-sm" onclick="resetTransforms()">↺ Reset All to None</button>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 4: CONFIGURE -->
+<div class="step-panel" id="panel4">
+  <div class="section-head">
+    <h2><span class="icon">🎛️</span> Configure Models</h2>
+    <p>Select classifiers to train and adjust the train/test split.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:18px">
+    <span class="label-sm">Select Models</span>
+    <div class="model-grid" style="margin-top:10px" id="modelGrid">
+      <div class="model-card selected" data-model="lr" onclick="toggleModel(this)">
+        <span class="m-icon">📐</span>
+        <div class="m-name">Logistic Regression</div>
+        <div class="m-desc">Gradient descent · Linear boundary</div>
+        <div class="m-check">✓</div>
+      </div>
+      <div class="model-card selected" data-model="knn" onclick="toggleModel(this)">
+        <span class="m-icon">🔵</span>
+        <div class="m-name">K-Nearest Neighbors</div>
+        <div class="m-desc">Distance-based · k=7</div>
+        <div class="m-check">✓</div>
+      </div>
+      <div class="model-card selected" data-model="gnb" onclick="toggleModel(this)">
+        <span class="m-icon">🔔</span>
+        <div class="m-name">Gaussian Naive Bayes</div>
+        <div class="m-desc">Probabilistic · Feature independence</div>
+        <div class="m-check">✓</div>
+      </div>
+      <div class="model-card selected" data-model="dt" onclick="toggleModel(this)">
+        <span class="m-icon">🌲</span>
+        <div class="m-name">Decision Tree</div>
+        <div class="m-desc">CART · Gini impurity · depth 8</div>
+        <div class="m-check">✓</div>
+      </div>
+      <div class="model-card selected" data-model="rf" onclick="toggleModel(this)">
+        <span class="m-icon">🌳</span>
+        <div class="m-name">Random Forest</div>
+        <div class="m-desc">Ensemble · 20 trees · bagging</div>
+        <div class="m-check">✓</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px">
+    <span class="label-sm">Train / Test Split</span>
+    <div class="slider-wrap" style="margin-top:10px">
+      <span style="font-size:13px;color:var(--text2)">Train</span>
+      <input type="range" id="splitSlider" min="60" max="90" value="80" step="5" oninput="updateSplit(this.value)">
+      <span style="font-size:13px;color:var(--text2)">Test</span>
+    </div>
+    <div style="margin-top:8px;font-size:13px;color:var(--text2)">
+      Training: <span id="splitTrainPct" class="mono" style="color:var(--teal)">80%</span> &nbsp;·&nbsp;
+      Testing: <span id="splitTestPct" class="mono" style="color:var(--blue)">20%</span> &nbsp;·&nbsp;
+      Random seed: 42
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px">
+    <span class="label-sm">Options</span>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" id="stratifyCheck" checked style="accent-color:var(--blue)">
+        <span style="font-size:14px">Stratified split (preserve class ratio in both sets)</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" id="rocCheck" checked style="accent-color:var(--blue)">
+        <span style="font-size:14px">Compute ROC curves &amp; AUC</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" id="fiCheck" checked style="accent-color:var(--blue)">
+        <span style="font-size:14px">Compute feature importance (tree-based models)</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="runBtn" onclick="runPipeline()">🚀 Run Pipeline</button>
+  </div>
+</div>
+
+<!-- STEP 5: TRAIN -->
+<div class="step-panel" id="panel5">
+  <div class="section-head">
+    <h2><span class="icon">🏋️</span> Training</h2>
+    <p>Models are trained in-browser using pure JavaScript implementations — no server or Python required.</p>
+  </div>
+  <div class="card" id="trainingLog">
+    <div class="empty-state"><span class="e-icon">⏳</span><p>Waiting to start…</p></div>
+  </div>
+</div>
+
+<!-- STEP 6: RESULTS -->
+<div class="step-panel" id="panel6">
+  <div class="section-head">
+    <h2><span class="icon">📊</span> Results</h2>
+    <p>Comprehensive evaluation across all trained classifiers.</p>
+  </div>
+  <div id="resultsContent">
+    <div class="empty-state"><span class="e-icon">📭</span><p>Train models first in Step 5</p></div>
+  </div>
+</div>
+
+<!-- STEP 7: PREDICT -->
+<div class="step-panel" id="panel7">
+  <div class="section-head">
+    <h2><span class="icon">🔮</span> Predict on New Data</h2>
+    <p>Upload an unlabelled CSV — all trained models will run on every row and their predictions are shown side-by-side so you can compare where models agree and where they diverge.</p>
+  </div>
+  <div id="predictGate" class="warn-box" style="margin-bottom:18px">⚠️ Train at least one model in Step 5 before generating predictions.</div>
+
+  <div class="card" style="margin-bottom:18px">
+    <div class="label-sm" style="margin-bottom:12px">Upload Prediction CSV</div>
+    <div class="upload-zone" id="predictUploadZone" onclick="document.getElementById('predictFileInput').click()" style="padding:28px 24px">
+      <span class="icon-big" style="font-size:32px">📂</span>
+      <h3 style="font-size:17px">Drop unlabelled CSV here or click to browse</h3>
+      <p>Must contain the same feature columns as your training set. No target column required — it will be ignored if present.</p>
+    </div>
+    <input type="file" id="predictFileInput" accept=".csv" style="display:none">
+    <div id="predictFileMsg" style="display:none;margin-top:10px" class="info-box"><strong id="predictFileMsgText"></strong></div>
+  </div>
+
+  <div id="predictModelsActive" style="display:none;margin-bottom:18px" class="info-box"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="runPredictBtn" onclick="runPredict()" disabled>🔮 Run All Models &amp; Compare</button>
+  </div>
+
+  <div id="predictResults" style="margin-top:20px"></div>
+</div>
+
+</main>
+
+<footer>Built with vanilla JS · Chart.js · PapaParse · Runs entirely in the browser</footer>
+
+<script>
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let rawData = [], allCols = [], targetCol = '', featureCols = [];
+let transforms = {}, encodingMaps = {};
+let trainX = [], trainY = [], testX = [], testY = [], testRows = [];
+let modelResults = {};
+let parsedRaw = []; // raw parsed before target chosen
+
+const MODEL_NAMES = { lr:'Logistic Regression', knn:'K-Nearest Neighbors', gnb:'Gaussian Naive Bayes', dt:'Decision Tree', rf:'Random Forest' };
+const MODEL_COLORS = { lr:'#e63946', knn:'#4cc9f0', gnb:'#c77dff', dt:'#ffd166', rf:'#06d6a0' };
+
+/* ═══════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════ */
+function goStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.step-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel' + n).classList.add('active');
+  document.getElementById('nav' + n).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function markDone(n) { document.getElementById('nav' + n).classList.add('done'); }
+
+/* ═══════════════════════════════════════════════
+   FILE UPLOAD
+═══════════════════════════════════════════════ */
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag'); if (e.dataTransfer.files[0]) parseCSV(e.dataTransfer.files[0]); });
+document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) parseCSV(e.target.files[0]); });
+
+function parseCSV(file) {
+  Papa.parse(file, {
+    header: true, dynamicTyping: true, skipEmptyLines: true,
+    complete(r) {
+      if (!r.data.length) { showMsg('❌ Empty file — no data rows found.', true); return; }
+      parsedRaw = r.data;
+      allCols = Object.keys(r.data[0]);
+      if (allCols.length < 2) { showMsg('❌ Need at least 2 columns.', true); return; }
+      showMsg(`✅ Loaded ${r.data.length} rows · ${allCols.length} columns. Now select your target column below.`);
+      buildColPicker(r.data);
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   COLUMN PICKER
+═══════════════════════════════════════════════ */
+let droppedIndexCols = [];
+let selectedFeatureCols = []; // user-chosen feature columns (pre-encoding)
+let userTypeMap = {};          // col → 'numeric' | 'categorical' | 'ordinal'
+let posClass    = null;        // user-chosen positive class label
+
+function isIndexCol(data, col) {
+  const lower = col.toLowerCase().trim();
+  // Name-based detection
+  if (/^(id|index|idx|row|rowid|row_id|unnamed.*0|serial|no\.?|#|_id)$/i.test(lower)) return true;
+  // Value-based: all values are sequential integers 0…n-1 or 1…n
+  const vals = data.map(r => r[col]);
+  const allNum = vals.every(v => typeof v === 'number' && Number.isInteger(v));
+  if (!allNum) return false;
+  const n = vals.length;
+  const sorted = [...vals].sort((a, b) => a - b);
+  // Check 0-indexed or 1-indexed monotonic sequence with no gaps
+  const base = sorted[0];
+  if (base !== 0 && base !== 1) return false;
+  for (let i = 0; i < n; i++) if (sorted[i] !== base + i) return false;
+  return true;
+}
+
+function colProfile(data, col) {
+  const vals = data.map(r => r[col]);
+  const uniq = [...new Set(vals.filter(v => v !== null && v !== undefined && v !== ''))];
+  const numericCount = vals.filter(v => typeof v === 'number' && !isNaN(v)).length;
+  const isNumeric = numericCount / vals.length > 0.85;
+  const isBinary = uniq.length === 2;
+  const isLowCardinality = uniq.length <= 12;
+  const canUseAsFeature = isNumeric || isLowCardinality;
+  const canUseAsTarget = isBinary;
+  return { uniq, isNumeric, isBinary, isLowCardinality, canUseAsFeature, canUseAsTarget };
+}
+
+function buildColPicker(data) {
+  // Auto-detect index columns
+  droppedIndexCols = allCols.filter(col => isIndexCol(data, col));
+  const usableCols = allCols.filter(col => !droppedIndexCols.includes(col));
+
+  if (droppedIndexCols.length) {
+    const note = document.getElementById('indexDropNote');
+    note.style.display = 'block';
+    note.innerHTML = `🗑️ <strong>Auto-dropped index column${droppedIndexCols.length > 1 ? 's' : ''}:</strong> ${droppedIndexCols.map(c => `<em>${c}</em>`).join(', ')} — sequential ID columns are excluded automatically.`;
+  }
+
+  const grid = document.getElementById('colPickerGrid');
+  grid.innerHTML = '';
+  usableCols.forEach(col => {
+    const p = colProfile(data, col);
+    const pill = document.createElement('button');
+    pill.className = 'col-pill' + (p.canUseAsFeature || p.canUseAsTarget ? '' : ' excluded');
+    pill.dataset.col = col;
+    const badge = p.isBinary
+      ? '<span style="font-size:9px;color:var(--teal)"> ⬤ binary</span>'
+      : p.isNumeric
+      ? '<span style="font-size:9px;color:var(--blue)"> # numeric</span>'
+      : `<span style="font-size:9px;color:var(--purple)"> ● ${p.uniq.length} vals</span>`;
+    pill.innerHTML = col + badge;
+    if (p.canUseAsTarget || p.canUseAsFeature) {
+      pill.onclick = () => selectTarget(col, data);
+    }
+    grid.appendChild(pill);
+  });
+  document.getElementById('targetPickerWrap').style.display = 'block';
+}
+
+function selectTarget(col, data) {
+  const p = colProfile(data, col);
+  if (!p.isBinary) {
+    document.getElementById('targetHint').innerHTML =
+      `<span style="color:var(--amber)">⚠️ "<strong>${col}</strong>" has ${p.uniq.length} unique values — target must be binary (exactly 2 classes). Please choose another column.</span>`;
+    document.getElementById('posClassPicker').style.display = 'none';
+    document.getElementById('featurePickerSection').style.display = 'none';
+    document.getElementById('confirmTargetBtn').disabled = true;
+    return;
+  }
+
+  // Highlight target pills
+  document.querySelectorAll('#colPickerGrid .col-pill').forEach(el => {
+    el.classList.remove('selected-target', 'selected-feature');
+    if (el.dataset.col === col) el.classList.add('selected-target');
+    else if (!el.classList.contains('excluded')) el.classList.add('selected-feature');
+  });
+  targetCol = col;
+  posClass  = null; // reset until user picks
+
+  document.getElementById('targetHint').innerHTML =
+    `✅ Target column: <strong style="color:var(--teal)">${col}</strong> — now select which value is the positive class below.`;
+
+  // Build positive-class picker
+  const uniq = p.uniq;
+  const btns = document.getElementById('posClassBtns');
+  btns.innerHTML = uniq.map(v =>
+    `<button class="posclass-btn" data-val="${v}" onclick="selectPosClass(this,'${String(v).replace(/'/g,"\\'")}')">
+      ${v}
+    </button>`
+  ).join('');
+
+  document.getElementById('posClassPicker').style.display = 'block';
+  document.getElementById('featurePickerSection').style.display = 'none';
+  document.getElementById('confirmTargetBtn').disabled = true;
+}
+
+function selectPosClass(btn, val) {
+  document.querySelectorAll('.posclass-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  posClass = val;
+
+  // Update hint
+  const negVal = [...document.querySelectorAll('.posclass-btn')]
+    .map(b => b.dataset.val).find(v => v !== val);
+  document.getElementById('targetHint').innerHTML =
+    `✅ Target: <strong style="color:var(--teal)">${targetCol}</strong> &nbsp;·&nbsp;
+     <span class="mono" style="color:var(--teal)">${negVal}</span> → 0 (negative)
+     &nbsp;/&nbsp;
+     <span class="mono" style="color:var(--red)">${val}</span> → 1 (positive)`;
+
+  // Now show feature picker
+  buildFeaturePicker(parsedRaw, targetCol);
+  document.getElementById('confirmTargetBtn').disabled = selectedFeatureCols.length === 0;
+}
+
+function buildFeaturePicker(data, tgt) {
+  const usableCols = allCols.filter(c => !droppedIndexCols.includes(c) && c !== tgt);
+  selectedFeatureCols = [];
+  userTypeMap = {};
+
+  const table = document.getElementById('featureTypeTable');
+
+  // Header row
+  let html = `<div class="ftype-table">
+    <div class="ftype-header">
+      <span></span>
+      <span>Column</span>
+      <span>Sample Values &amp; Stats</span>
+      <span>Data Type</span>
+    </div>`;
+
+  usableCols.forEach(col => {
+    const p      = colProfile(data, col);
+    const vals   = data.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== '');
+    const sample = [...new Set(vals)].slice(0, 5).map(v => String(v)).join(', ');
+    const numericCount = vals.filter(v => typeof v === 'number' && !isNaN(v)).length;
+    const pctNum = numericCount / vals.length;
+
+    // Auto-suggest type
+    let autoType;
+    if (p.isBinary) {
+      autoType = 'categorical'; // binary ints (0/1) are almost always categorical codes
+    } else if (p.isNumeric && p.uniq.length > 12) {
+      autoType = 'numeric';     // clearly continuous
+    } else if (p.isNumeric && p.uniq.length <= 12) {
+      autoType = 'categorical'; // low-unique integer → likely coded category
+    } else if (p.isLowCardinality) {
+      autoType = 'categorical';
+    } else {
+      autoType = 'numeric';
+    }
+
+    userTypeMap[col] = autoType;
+    const isUsable = p.isNumeric || p.isLowCardinality;
+
+    if (isUsable) selectedFeatureCols.push(col);
+
+    const uniqCount = p.uniq.length;
+    const statsText = p.isNumeric
+      ? `${uniqCount} unique vals · ${(pctNum*100).toFixed(0)}% numeric · sample: ${sample}`
+      : `${uniqCount} categories · sample: ${sample}`;
+
+    const options = [
+      { val: 'numeric',     label: '# Numeric (continuous)' },
+      { val: 'categorical', label: '⊞ Categorical (one-hot)' },
+      { val: 'ordinal',     label: '↕ Ordinal (keep as number)' },
+    ].map(o => `<option value="${o.val}"${autoType===o.val?' selected':''}>${o.label}</option>`).join('');
+
+    const rowClass = isUsable ? '' : ' excluded-row';
+    html += `<div class="ftype-row${rowClass}" id="frow-${CSS.escape(col)}">
+      <input type="checkbox" class="ftype-check" data-col="${col}"
+        ${isUsable ? 'checked' : ''} ${isUsable ? '' : 'disabled'}
+        onchange="toggleFeatureRow(this,'${col.replace(/'/g,"\\'")}')">
+      <div class="ftype-name" title="${col}">${col}</div>
+      <div class="ftype-samples" title="${statsText}">${statsText}</div>
+      <select class="ftype-select type-${autoType}" data-col="${col}"
+        onchange="setColType(this,'${col.replace(/'/g,"\\'")}')">
+        ${options}
+      </select>
+    </div>`;
+  });
+
+  html += '</div>';
+  table.innerHTML = html;
+  document.getElementById('featurePickerSection').style.display = 'block';
+  updateFeatureHint();
+}
+
+function toggleFeatureRow(checkbox, col) {
+  const row = document.getElementById('frow-' + CSS.escape(col));
+  if (checkbox.checked) {
+    selectedFeatureCols.push(col);
+    row.classList.remove('excluded-row');
+  } else {
+    selectedFeatureCols = selectedFeatureCols.filter(c => c !== col);
+    row.classList.add('excluded-row');
+  }
+  updateFeatureHint();
+  document.getElementById('confirmTargetBtn').disabled = selectedFeatureCols.length === 0;
+}
+
+function setColType(select, col) {
+  userTypeMap[col] = select.value;
+  select.className = `ftype-select type-${select.value}`;
+}
+
+function setAllFeatures(on) {
+  document.querySelectorAll('.ftype-check:not(:disabled)').forEach(cb => {
+    cb.checked = on;
+    const col = cb.dataset.col;
+    const row = document.getElementById('frow-' + CSS.escape(col));
+    if (on) { if (!selectedFeatureCols.includes(col)) selectedFeatureCols.push(col); row.classList.remove('excluded-row'); }
+    else { selectedFeatureCols = selectedFeatureCols.filter(c => c !== col); row.classList.add('excluded-row'); }
+  });
+  updateFeatureHint();
+  document.getElementById('confirmTargetBtn').disabled = selectedFeatureCols.length === 0;
+}
+
+function setAllNumeric() {
+  document.querySelectorAll('.ftype-select').forEach(sel => {
+    const col = sel.dataset.col;
+    if (selectedFeatureCols.includes(col)) {
+      sel.value = 'numeric'; userTypeMap[col] = 'numeric';
+      sel.className = 'ftype-select type-numeric';
+    }
+  });
+}
+
+function setAllCategorical() {
+  document.querySelectorAll('.ftype-select').forEach(sel => {
+    const col = sel.dataset.col;
+    if (selectedFeatureCols.includes(col)) {
+      sel.value = 'categorical'; userTypeMap[col] = 'categorical';
+      sel.className = 'ftype-select type-categorical';
+    }
+  });
+}
+
+function updateFeatureHint() {
+  const n = selectedFeatureCols.length;
+  const nNum = selectedFeatureCols.filter(c => userTypeMap[c] === 'numeric' || userTypeMap[c] === 'ordinal').length;
+  const nCat = selectedFeatureCols.filter(c => userTypeMap[c] === 'categorical').length;
+  document.getElementById('featureHint').innerHTML = n
+    ? `<span style="color:var(--teal)">✓ ${n} feature${n!==1?'s':''} selected</span>
+       &nbsp;·&nbsp; <span style="color:var(--blue)">${nNum} numeric/ordinal</span>
+       &nbsp;·&nbsp; <span style="color:var(--purple)">${nCat} categorical</span>`
+    : `<span style="color:var(--red)">⚠️ No features selected — select at least one.</span>`;
+}
+
+function confirmTarget() {
+  if (!targetCol || selectedFeatureCols.length === 0) return;
+  ingestData(parsedRaw);
+}
+
+/* ═══════════════════════════════════════════════
+   INGEST
+═══════════════════════════════════════════════ */
+function ingestData(rows) {
+  // posClass is set explicitly by the user — no guessing
+  const posClassStr = String(posClass).trim();
+
+  // Determine usable feature columns — only from user's selection
+  const potentialFeatures = selectedFeatureCols.filter(c => c !== targetCol && !droppedIndexCols.includes(c));
+  featureCols = [];
+  encodingMaps = {};
+
+  potentialFeatures.forEach(col => {
+    const type = userTypeMap[col] || 'numeric';
+    if (type === 'numeric' || type === 'ordinal') {
+      // Treat as continuous numeric — use value as-is
+      featureCols.push(col);
+    } else {
+      // categorical → one-hot encode
+      const p = colProfile(rows, col);
+      const vals = [...new Set(rows.map(r => String(r[col] ?? '')).filter(v => v !== ''))].sort();
+      // drop first level to avoid dummy trap (skip for binary)
+      const toDrop = vals.length > 2 ? vals[0] : null;
+      vals.forEach(v => {
+        if (v !== toDrop) {
+          const newCol = `${col}=${v}`;
+          featureCols.push(newCol);
+          if (!encodingMaps[col]) encodingMaps[col] = {};
+          encodingMaps[col][v] = newCol;
+        }
+      });
+      encodingMaps[col].__original = col;
+    }
+  });
+
+  rawData = rows.map(r => {
+    const out = { ...r };
+    const tv = String(r[targetCol]).trim();
+    out.__target = (tv === posClassStr) ? 1 : 0;
+    // expand one-hot cols
+    Object.entries(encodingMaps).forEach(([origCol, map]) => {
+      const val = r[origCol];
+      Object.keys(map).filter(k => k !== '__original').forEach(v => {
+        out[map[v]] = (String(val).trim() === String(v).trim()) ? 1 : 0;
+      });
+    });
+    return out;
+  });
+
+  transforms = {};
+  featureCols.forEach(c => { transforms[c] = 'none'; });
+
+  showMsg(`✅ Ready — ${rawData.length} rows · ${featureCols.length} model features · target: "${targetCol}"`);
+  markDone(1);
+  buildExplore();
+  buildPreprocess();
+  goStep(2);
+}
+
+function showMsg(text, isErr = false) {
+  const el = document.getElementById('loadMsg');
+  el.style.display = 'block';
+  document.getElementById('loadMsgText').textContent = text;
+  el.style.borderColor = isErr ? 'rgba(230,57,70,.3)' : 'rgba(76,201,240,.2)';
+  el.style.background = isErr ? 'rgba(230,57,70,.06)' : 'rgba(76,201,240,.06)';
+}
+
+/* ═══════════════════════════════════════════════
+   STATISTICS
+═══════════════════════════════════════════════ */
+function mean(a) { return a.reduce((s, v) => s + v, 0) / (a.length || 1); }
+function std(a) { const m = mean(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length || 1)); }
+
+function colStats(col) {
+  const vals = rawData.map(r => +r[col]).filter(v => !isNaN(v));
+  if (!vals.length) return { n: 0, min: 0, max: 0, mean: 0, std: 0, median: 0, uniq: 0 };
+  const n = vals.length;
+  // Use reduce instead of spread to avoid stack overflow on large arrays
+  let mn = vals[0], mx = vals[0], sum = 0;
+  for (const v of vals) { if (v < mn) mn = v; if (v > mx) mx = v; sum += v; }
+  const mu = sum / n;
+  let variance = 0;
+  for (const v of vals) variance += (v - mu) ** 2;
+  const sigma = Math.sqrt(variance / n);
+  const sorted = [...vals].sort((a, b) => a - b);
+  const median = sorted[Math.floor(n / 2)];
+  const uniq = new Set(vals).size;
+  return { n, min: mn, max: mx, mean: mu, std: sigma, median, uniq };
+}
+
+/* ═══════════════════════════════════════════════
+   STEP 2: EXPLORE
+═══════════════════════════════════════════════ */
+function buildExplore() {
+  try { _buildExplore(); }
+  catch(e) {
+    console.error('buildExplore error:', e);
+    document.getElementById('exploreContent').innerHTML =
+      `<div class="warn-box">⚠️ Error rendering Explore: ${e.message}. Check the browser console for details.</div>`;
+  }
+}
+function _buildExplore() {
+  const pos = rawData.filter(r => r.__target === 1).length;
+  const neg = rawData.length - pos;
+  const pPos = (pos / rawData.length * 100).toFixed(1);
+  const pNeg = (neg / rawData.length * 100).toFixed(1);
+
+  const origFeatCols = selectedFeatureCols.filter(c => c !== targetCol && !droppedIndexCols.includes(c));
+  const numericCols  = origFeatCols.filter(c => userTypeMap[c] === 'numeric');
+  const ordinalCols  = origFeatCols.filter(c => userTypeMap[c] === 'ordinal');
+  const catCols      = origFeatCols.filter(c => userTypeMap[c] === 'categorical');
+  const encoded      = Object.keys(encodingMaps);
+
+  // Class labels come directly from user's explicit choice
+  const class1Label = String(posClass);
+  const tgtUniq = [...new Set(rawData.map(r => r[targetCol]))];
+  const class0Label = String(tgtUniq.find(v => String(v).trim() !== class1Label) ?? tgtUniq[0]);
+
+  // ── SUMMARY CHIPS
+  let html = `
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px">
+    <div class="stat-chip"><div class="s-label">Rows</div><div class="s-value" style="color:var(--blue)">${rawData.length.toLocaleString()}</div></div>
+    <div class="stat-chip"><div class="s-label">Feature Cols</div><div class="s-value" style="color:var(--teal)">${origFeatCols.length}</div><div class="feat-meta">${featureCols.length} model dims</div></div>
+    <div class="stat-chip"><div class="s-label">Numeric</div><div class="s-value" style="color:var(--blue)">${numericCols.length}</div></div>
+    <div class="stat-chip"><div class="s-label">Ordinal</div><div class="s-value" style="color:var(--amber)">${ordinalCols.length}</div></div>
+    <div class="stat-chip"><div class="s-label">Categorical</div><div class="s-value" style="color:var(--purple)">${catCols.length}</div><div class="feat-meta">${featureCols.filter(f=>Object.keys(encodingMaps).some(e=>f.startsWith(e+'='))).length} encoded dims</div></div>
+    <div class="stat-chip"><div class="s-label">Class 0</div><div class="s-value" style="color:var(--blue)">${neg} <span style="font-size:12px">(${pNeg}%)</span></div><div class="feat-meta">${class0Label}</div></div>
+    <div class="stat-chip"><div class="s-label">Class 1</div><div class="s-value" style="color:var(--red)">${pos} <span style="font-size:12px">(${pPos}%)</span></div><div class="feat-meta">${class1Label}</div></div>
+  </div>`;
+
+  // ── TARGET DISTRIBUTION + DATA PREVIEW side by side
+  html += `<div style="display:grid;grid-template-columns:200px 1fr;gap:14px;margin-bottom:20px;align-items:start">
+    <div class="card" style="padding:16px">
+      <div class="label-sm" style="margin-bottom:10px">Target Distribution</div>
+      <div style="position:relative;height:160px"><canvas id="ex_targetDonut"></canvas></div>
+      <div style="margin-top:10px;font-size:11px;font-family:var(--font-m);display:flex;flex-direction:column;gap:4px">
+        <span><span style="color:var(--blue)">●</span> ${class0Label}: ${neg} (${pNeg}%)</span>
+        <span><span style="color:var(--red)">●</span> ${class1Label}: ${pos} (${pPos}%)</span>
+      </div>
+    </div>
+    <div class="card" style="padding:16px;overflow:hidden">
+      <div class="label-sm" style="margin-bottom:10px">Data Preview — first 12 rows</div>
+      <div class="tbl-wrap"><table>
+      <thead><tr>${origFeatCols.slice(0,8).map(c=>`<th>${c}</th>`).join('')}<th>${targetCol} 🎯</th>${origFeatCols.length>8?'<th style="color:var(--muted)">…</th>':''}</tr></thead>
+      <tbody>`;
+  rawData.slice(0,12).forEach(r=>{
+    html+=`<tr>${origFeatCols.slice(0,8).map(c=>`<td>${r[c]??''}</td>`).join('')}
+    <td style="color:${r.__target===1?'var(--red)':'var(--teal)'};font-weight:600">${r[targetCol]}</td>
+    ${origFeatCols.length>8?'<td style="color:var(--muted)">…</td>':''}
+    </tr>`;
+  });
+  html+=`</tbody></table></div>
+    </div>
+  </div>`;
+
+  // ── NUMERIC SECTION  (true continuous histograms)
+  if (numericCols.length) {
+    html += `<div class="card" style="margin-bottom:20px">
+      <div class="label-sm" style="margin-bottom:14px">Numeric Feature Analysis
+        <span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:8px">Histograms — each bar = a value range, height = count</span>
+      </div>`;
+    // Stats table
+    html += `<div class="tbl-wrap" style="margin-bottom:18px"><table>
+      <thead><tr><th>Feature</th><th>n</th><th>Min</th><th>Max</th><th>Mean (all)</th><th>Mean (cls 0)</th><th>Mean (cls 1)</th><th>Std</th><th>Median</th></tr></thead><tbody>`;
+    numericCols.forEach(c => {
+      const s  = colStats(c);
+      const v0 = rawData.filter(r=>r.__target===0).map(r=>+r[c]).filter(v=>!isNaN(v));
+      const v1 = rawData.filter(r=>r.__target===1).map(r=>+r[c]).filter(v=>!isNaN(v));
+      const m0 = v0.length ? (v0.reduce((a,b)=>a+b,0)/v0.length).toFixed(3) : '—';
+      const m1 = v1.length ? (v1.reduce((a,b)=>a+b,0)/v1.length).toFixed(3) : '—';
+      const f  = v => typeof v==='number' ? v.toFixed(3) : '—';
+      html += `<tr>
+        <td style="font-weight:600;color:var(--text)">${c}</td>
+        <td>${s.n}</td><td>${f(s.min)}</td><td>${f(s.max)}</td>
+        <td style="color:var(--blue)">${f(s.mean)}</td>
+        <td style="color:var(--teal)">${m0}</td>
+        <td style="color:var(--red)">${m1}</td>
+        <td>${f(s.std)}</td><td>${f(s.median)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">`;
+    numericCols.forEach((c,i) => {
+      html += `<div class="chart-box" style="padding:14px">
+        <h4 style="font-size:12px;margin-bottom:8px;color:var(--text2)">${c} <span style="color:var(--muted);font-weight:400">— histogram</span></h4>
+        <div style="position:relative;height:190px"><canvas id="ex_num_${i}"></canvas></div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── ORDINAL SECTION  (discrete ordered bar charts)
+  if (ordinalCols.length) {
+    html += `<div class="card" style="margin-bottom:20px">
+      <div class="label-sm" style="margin-bottom:14px">Ordinal Feature Analysis
+        <span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:8px">Bar charts — each bar = one distinct value, height = count</span>
+      </div>`;
+    // Stats table
+    html += `<div class="tbl-wrap" style="margin-bottom:18px"><table>
+      <thead><tr><th>Feature</th><th>Unique Values</th><th>Min</th><th>Max</th><th>Median (cls 0)</th><th>Median (cls 1)</th></tr></thead><tbody>`;
+    ordinalCols.forEach(c => {
+      const s   = colStats(c);
+      const v0  = rawData.filter(r=>r.__target===0).map(r=>+r[c]).filter(v=>!isNaN(v)).sort((a,b)=>a-b);
+      const v1  = rawData.filter(r=>r.__target===1).map(r=>+r[c]).filter(v=>!isNaN(v)).sort((a,b)=>a-b);
+      const med = arr => arr.length ? arr[Math.floor(arr.length/2)] : '—';
+      html += `<tr>
+        <td style="font-weight:600;color:var(--text)">${c}</td>
+        <td style="color:var(--amber)">${s.uniq}</td>
+        <td>${s.min}</td><td>${s.max}</td>
+        <td style="color:var(--teal)">${med(v0)}</td>
+        <td style="color:var(--red)">${med(v1)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">`;
+    ordinalCols.forEach((c,i) => {
+      html += `<div class="chart-box" style="padding:14px">
+        <h4 style="font-size:12px;margin-bottom:8px;color:var(--text2)">${c} <span style="color:var(--muted);font-weight:400">— grouped bar</span></h4>
+        <div style="position:relative;height:190px"><canvas id="ex_ord_${i}"></canvas></div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── CATEGORICAL SECTION  (nominal grouped bar charts)
+  if (catCols.length) {
+    html += `<div class="card" style="margin-bottom:20px">
+      <div class="label-sm" style="margin-bottom:14px">Categorical Feature Analysis
+        <span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:8px">Grouped bars — count of each class per category value</span>
+      </div>`;
+    // Summary table
+    html += `<div class="tbl-wrap" style="margin-bottom:18px"><table>
+      <thead><tr><th>Feature</th><th>Unique</th><th>Mode (overall)</th><th>Mode (cls 0)</th><th>Mode (cls 1)</th><th>Encoded As</th></tr></thead><tbody>`;
+    catCols.forEach(c => {
+      const vals  = rawData.map(r => String(r[c]??''));
+      const freq  = {}; vals.forEach(v => freq[v] = (freq[v]||0)+1);
+      const mode  = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0]?.[0] ?? '—';
+      const getMode = arr => { const f={}; arr.forEach(v=>f[v]=(f[v]||0)+1); return Object.entries(f).sort((a,b)=>b[1]-a[1])[0]?.[0]??'—'; };
+      const encCols = featureCols.filter(f=>f.startsWith(c+'='));
+      html += `<tr>
+        <td style="font-weight:600;color:var(--text)">${c}</td>
+        <td style="color:var(--purple)">${new Set(vals).size}</td>
+        <td style="color:var(--amber)">${mode}</td>
+        <td style="color:var(--teal)">${getMode(rawData.filter(r=>r.__target===0).map(r=>String(r[c]??'')))}</td>
+        <td style="color:var(--red)">${getMode(rawData.filter(r=>r.__target===1).map(r=>String(r[c]??'')))}</td>
+        <td style="font-family:var(--font-m);font-size:10px;color:var(--blue)">${encCols.join(', ')}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">`;
+    catCols.forEach((c,i) => {
+      html += `<div class="chart-box" style="padding:14px">
+        <h4 style="font-size:12px;margin-bottom:8px;color:var(--text2)">${c} <span style="color:var(--muted);font-weight:400">— grouped bar</span></h4>
+        <div style="position:relative;height:200px"><canvas id="ex_cat_${i}"></canvas></div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── encoding note
+  if (encoded.length) {
+    html += `<div class="info-box" style="margin-bottom:16px">
+      <strong>One-hot encoding:</strong> ${encoded.map(c=>`<em>${c}</em>`).join(', ')} → ${featureCols.filter(f=>encoded.some(e=>f.startsWith(e+'='))).length} binary indicator columns (first level dropped per feature to avoid multicollinearity).
+    </div>`;
+  }
+
+  html += `<div class="btn-row"><button class="btn btn-teal" onclick="goStep(3)">⚙️ Continue to Preprocessing →</button></div>`;
+  document.getElementById('exploreContent').innerHTML = html;
+
+  // ── RENDER ALL CHARTS
+  requestAnimationFrame(() => {
+    const TICK  = { color: '#5a7280', font: { family: 'JetBrains Mono', size: 9 } };
+    const GRID  = { color: 'rgba(29,48,80,.4)' };
+    const LGND  = { color: '#8ba8bc', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 10, padding: 6 };
+    const BASE_SCALES = { x: { ticks: TICK, grid: GRID }, y: { ticks: TICK, grid: GRID, beginAtZero: true } };
+
+    // Target donut
+    const donutCtx = document.getElementById('ex_targetDonut');
+    if (donutCtx) new Chart(donutCtx, {
+      type: 'doughnut',
+      data: { labels: [class0Label, class1Label], datasets: [{ data: [neg, pos],
+        backgroundColor: ['rgba(76,201,240,.65)','rgba(230,57,70,.65)'],
+        borderColor: ['#4cc9f0','#e63946'], borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: { legend: { display: false } }, animation: { duration: 400 } }
+    });
+
+    // ── NUMERIC: true histograms
+    // Bins touch (categoryPercentage:1, barPercentage:0.5 so two classes sit side-by-side within each bin gap-free)
+    numericCols.forEach((c, i) => {
+      const ctx = document.getElementById(`ex_num_${i}`); if (!ctx) return;
+      const allVals = rawData.map(r => +r[c]).filter(v => !isNaN(v));
+      let mn = allVals[0], mx = allVals[0];
+      for (const v of allVals) { if (v < mn) mn = v; if (v > mx) mx = v; }
+      const nBins = Math.min(25, Math.max(8, Math.ceil(Math.sqrt(allVals.length))));
+      const binW  = (mx - mn) / nBins || 1;
+      const bins0 = new Array(nBins).fill(0);
+      const bins1 = new Array(nBins).fill(0);
+      rawData.forEach(r => {
+        const v = +r[c]; if (isNaN(v)) return;
+        const bi = Math.min(nBins - 1, Math.floor((v - mn) / binW));
+        r.__target === 1 ? bins1[bi]++ : bins0[bi]++;
+      });
+      // Labels = left edge of bin (cleaner for histograms than centre)
+      const labels = Array.from({ length: nBins }, (_, k) => {
+        const edge = mn + k * binW;
+        return Number.isInteger(edge) ? String(edge) : edge.toFixed(2);
+      });
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [
+          { label: class0Label, data: bins0,
+            backgroundColor: 'rgba(76,201,240,.5)', borderColor: '#4cc9f0',
+            borderWidth: 1, borderRadius: 0 },
+          { label: class1Label, data: bins1,
+            backgroundColor: 'rgba(230,57,70,.5)', borderColor: '#e63946',
+            borderWidth: 1, borderRadius: 0 }
+        ]},
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+          plugins: { legend: { labels: LGND, position: 'top' } },
+          scales: {
+            x: { ...BASE_SCALES.x,
+              // bins touch: no gap between adjacent bars of the same dataset
+              categoryPercentage: 1.0,
+              barPercentage: 0.5,
+              ticks: { ...TICK, maxRotation: 45, autoSkip: true, maxTicksLimit: 10 },
+              title: { display: true, text: c, color: '#5a7280', font: { size: 10 } }
+            },
+            y: { ...BASE_SCALES.y,
+              title: { display: true, text: 'Count', color: '#5a7280', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    });
+
+    // ── ORDINAL: discrete grouped bar charts (values are ordered, gaps between bars)
+    ordinalCols.forEach((c, i) => {
+      const ctx = document.getElementById(`ex_ord_${i}`); if (!ctx) return;
+      const uniqueVals = [...new Set(rawData.map(r => +r[c]).filter(v => !isNaN(v)))].sort((a,b) => a - b);
+      const cnt0 = uniqueVals.map(v => rawData.filter(r => +r[c] === v && r.__target === 0).length);
+      const cnt1 = uniqueVals.map(v => rawData.filter(r => +r[c] === v && r.__target === 1).length);
+      const labels = uniqueVals.map(v => String(v));
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [
+          { label: class0Label, data: cnt0,
+            backgroundColor: 'rgba(255,209,102,.5)', borderColor: '#ffd166',
+            borderWidth: 1, borderRadius: 3 },
+          { label: class1Label, data: cnt1,
+            backgroundColor: 'rgba(255,209,102,.25)', borderColor: '#ffd166',
+            borderWidth: 1, borderDash: [3,3], borderRadius: 3 }
+        ]},
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+          plugins: { legend: { labels: LGND, position: 'top' } },
+          scales: {
+            x: { ...BASE_SCALES.x,
+              title: { display: true, text: c, color: '#5a7280', font: { size: 10 } }
+            },
+            y: { ...BASE_SCALES.y,
+              title: { display: true, text: 'Count', color: '#5a7280', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    });
+
+    // ── CATEGORICAL: nominal grouped bar charts
+    catCols.forEach((c, i) => {
+      const ctx = document.getElementById(`ex_cat_${i}`); if (!ctx) return;
+      const catVals = [...new Set(rawData.map(r => String(r[c]??'')))].sort();
+      const cnt0 = catVals.map(v => rawData.filter(r => String(r[c]??'') === v && r.__target === 0).length);
+      const cnt1 = catVals.map(v => rawData.filter(r => String(r[c]??'') === v && r.__target === 1).length);
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels: catVals, datasets: [
+          { label: class0Label, data: cnt0,
+            backgroundColor: 'rgba(199,125,255,.45)', borderColor: '#c77dff',
+            borderWidth: 1, borderRadius: 3 },
+          { label: class1Label, data: cnt1,
+            backgroundColor: 'rgba(199,125,255,.2)', borderColor: '#c77dff',
+            borderWidth: 1, borderDash: [3,3], borderRadius: 3 }
+        ]},
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+          plugins: { legend: { labels: LGND, position: 'top' } },
+          scales: {
+            x: { ...BASE_SCALES.x,
+              ticks: { ...TICK, maxRotation: 35, autoSkip: true, maxTicksLimit: 12 },
+              title: { display: true, text: c, color: '#5a7280', font: { size: 10 } }
+            },
+            y: { ...BASE_SCALES.y,
+              title: { display: true, text: 'Count', color: '#5a7280', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    });
+  });
+} // end _buildExplore
+
+function buildPreprocess() {
+  try { _buildPreprocess(); }
+  catch(e) {
+    console.error('buildPreprocess error:', e);
+    document.getElementById('preprocessContent').innerHTML =
+      `<div class="warn-box">⚠️ Error rendering Preprocess: ${e.message}</div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   STEP 3: PREPROCESS
+═══════════════════════════════════════════════ */
+const TRANSFORM_OPTS = [
+  { val: 'none',     label: 'None (raw)' },
+  { val: 'standard', label: 'StandardScaler (z-score)' },
+  { val: 'minmax',   label: 'MinMaxScaler [0–1]' },
+  { val: 'log1p',    label: 'Log1p transform' },
+  { val: 'sqrt',     label: 'Sqrt transform' },
+  { val: 'robust',   label: 'Robust Scaler (IQR)' },
+];
+
+function _buildPreprocess() {
+  if (!rawData.length) return;
+  let html = '<div class="card"><div>';
+  featureCols.forEach(c => {
+    const s = colStats(c);
+    const isBinary = s.uniq <= 2 || c.includes('=');
+    const userType = c.includes('=') ? 'categorical' : (userTypeMap[c] || (isBinary ? 'categorical' : 'numeric'));
+    // Suggest transform
+    if (transforms[c] === 'none' || !transforms[c]) {
+      if (userType === 'numeric' && !isBinary) {
+        const cv = s.std / (Math.abs(s.mean) || 1);
+        if (s.min >= 0 && cv > 0.5) transforms[c] = 'log1p';
+        else transforms[c] = 'standard';
+      }
+    }
+    const range = s.max - s.min || 1;
+    const opts = TRANSFORM_OPTS
+      .filter(o => (isBinary || userType === 'categorical') ? o.val === 'none' : true)
+      .map(o => `<option value="${o.val}"${transforms[c] === o.val ? ' selected' : ''}>${o.label}</option>`).join('');
+    const typeLabel = userType === 'categorical'
+      ? `<span class="type-badge type-cat">categorical</span>`
+      : userType === 'ordinal'
+      ? `<span class="type-badge" style="background:rgba(255,209,102,.12);color:var(--amber)">ordinal</span>`
+      : isBinary
+      ? `<span class="type-badge type-bin">binary</span>`
+      : `<span class="type-badge type-num">numeric</span>`;
+    html += `<div class="feat-row">
+      <div>
+        <div class="feat-name">${c}${typeLabel}</div>
+        <div class="feat-meta">range ${s.min.toFixed(2)} – ${s.max.toFixed(2)} · σ=${s.std.toFixed(2)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px">μ=${s.mean.toFixed(2)}  σ=${s.std.toFixed(2)}  uniq=${s.uniq}</div>
+        <div class="feat-bar-wrap"><div class="feat-bar" style="width:${Math.min(100, s.std / range * 200)}%"></div></div>
+      </div>
+      <select class="feat-select" data-col="${c}" onchange="transforms[this.dataset.col]=this.value">${opts}</select>
+    </div>`;
+  });
+  html += '</div></div>';
+  document.getElementById('preprocessContent').innerHTML = html;
+  document.getElementById('preprocessBtn').style.display = 'block';
+}
+
+function resetTransforms() {
+  featureCols.forEach(c => { transforms[c] = 'none'; });
+  buildPreprocess();
+}
+function applyPreprocess() { markDone(3); goStep(4); }
+
+/* ═══════════════════════════════════════════════
+   TRANSFORMS
+═══════════════════════════════════════════════ */
+function fitTransform(vals, type) {
+  switch (type) {
+    case 'standard': { const m = mean(vals), s = std(vals) || 1; return { fn: v => (v - m) / s }; }
+    case 'minmax': { const mn = Math.min(...vals), mx = Math.max(...vals), r = mx - mn || 1; return { fn: v => (v - mn) / r }; }
+    case 'log1p': return { fn: v => Math.log1p(Math.max(0, v)) };
+    case 'sqrt': return { fn: v => Math.sqrt(Math.max(0, v)) };
+    case 'robust': {
+      const s = [...vals].sort((a, b) => a - b);
+      const q1 = s[Math.floor(vals.length * .25)], q3 = s[Math.floor(vals.length * .75)], iqr = q3 - q1 || 1;
+      const med = s[Math.floor(vals.length / 2)];
+      return { fn: v => (v - med) / iqr };
+    }
+    default: return { fn: v => v };
+  }
+}
+
+function buildTransformers(data) {
+  const tfms = {};
+  featureCols.forEach(c => {
+    const vals = data.map(r => +r[c]).filter(v => !isNaN(v));
+    tfms[c] = fitTransform(vals, transforms[c] || 'none');
+  });
+  return tfms;
+}
+
+function transformRow(r, tfms) {
+  return featureCols.map(c => {
+    const v = +r[c];
+    return isNaN(v) ? 0 : tfms[c].fn(v);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   CONFIGURE HELPERS
+═══════════════════════════════════════════════ */
+function updateSplit(v) {
+  document.getElementById('splitTrainPct').textContent = v + '%';
+  document.getElementById('splitTestPct').textContent = (100 - v) + '%';
+}
+function toggleModel(el) {
+  el.classList.toggle('selected');
+  el.querySelector('.m-check').textContent = el.classList.contains('selected') ? '✓' : '';
+}
+
+/* ═══════════════════════════════════════════════
+   SPLIT HELPERS
+═══════════════════════════════════════════════ */
+function seededShuffle(arr, seed) {
+  let s = seed;
+  const r = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  return arr;
+}
+function stratifiedSplit(data, ratio, seed = 42) {
+  const pos = data.filter(r => r.__target === 1), neg = data.filter(r => r.__target === 0);
+  const splitG = (g, r) => { const s = seededShuffle([...g], seed); const n = Math.floor(s.length * r); return { train: s.slice(0, n), test: s.slice(n) }; };
+  const ps = splitG(pos, ratio), ns = splitG(neg, ratio);
+  return { train: seededShuffle([...ps.train, ...ns.train], seed + 1), test: seededShuffle([...ps.test, ...ns.test], seed + 2) };
+}
+function simpleSplit(data, ratio) {
+  const s = seededShuffle([...data], 42); const n = Math.floor(s.length * ratio);
+  return { train: s.slice(0, n), test: s.slice(n) };
+}
+
+/* ═══════════════════════════════════════════════
+   ML — MATH UTILS
+═══════════════════════════════════════════════ */
+function dot(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+const yld = () => new Promise(r => setTimeout(r, 0)); // UI yield
+
+/* ── Logistic Regression ── */
+class LogisticRegression {
+  constructor() {}
+  sig(z) { return 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, z)))); }
+  async fit(X, y) {
+    const n = X.length, m = X[0].length;
+    const lr = 0.05;
+    const epochs = n > 5000 ? 150 : n > 1000 ? 300 : 500;
+    this.w = new Float64Array(m); this.b = 0;
+    for (let e = 0; e < epochs; e++) {
+      const dw = new Float64Array(m); let db = 0;
+      for (let i = 0; i < n; i++) {
+        const err = this.sig(this.b + dot(X[i], this.w)) - y[i];
+        for (let j = 0; j < m; j++) dw[j] += err * X[i][j];
+        db += err;
+      }
+      for (let j = 0; j < m; j++) this.w[j] -= lr * dw[j] / n;
+      this.b -= lr * db / n;
+      if (e % 50 === 49) await yld();
+    }
+  }
+  predProba(X) { return X.map(x => this.sig(this.b + dot(x, this.w))); }
+  predict(X)   { return this.predProba(X).map(p => p >= 0.5 ? 1 : 0); }
+  featureImportance() { const ab = Array.from(this.w).map(Math.abs), s = ab.reduce((a,b)=>a+b)||1; return ab.map(v=>v/s); }
+}
+
+/* ── K-NN ── */
+class KNN {
+  constructor(k = 7) { this.k = k; }
+  async fit(X, y) {
+    const cap = 1200;
+    if (X.length > cap) {
+      const idx = seededShuffle([...Array(X.length).keys()], 77).slice(0, cap);
+      this.X = idx.map(i => X[i]); this.y = idx.map(i => y[i]);
+    } else { this.X = X; this.y = y; }
+    await yld();
+  }
+  dist(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += (a[i]-b[i])**2; return s; }
+  predOne(x) {
+    const k = this.k, n = this.X.length;
+    const top = [];
+    for (let i = 0; i < n; i++) {
+      const d = this.dist(x, this.X[i]);
+      if (top.length < k) { top.push({d, y: this.y[i]}); if (top.length === k) top.sort((a,b)=>b.d-a.d); }
+      else if (d < top[0].d) { top[0] = {d, y: this.y[i]}; top.sort((a,b)=>b.d-a.d); }
+    }
+    return top.reduce((s,n)=>s+n.y,0)/top.length;
+  }
+  async predProbaAsync(X) {
+    const out = [];
+    for (let i = 0; i < X.length; i++) {
+      out.push(this.predOne(X[i]));
+      if (i % 80 === 79) await yld();
+    }
+    return out;
+  }
+  predProba(X) { return X.map(x => this.predOne(x)); }
+  predict(X)   { return this.predProba(X).map(p => p >= 0.5 ? 1 : 0); }
+}
+
+/* ── Gaussian NB ── */
+class GaussianNB {
+  async fit(X, y) {
+    const m = X[0].length, n = y.length;
+    this.priors={}; this.means={}; this.vars={};
+    for (const c of [0,1]) {
+      const idx = []; for (let i=0;i<n;i++) if(y[i]===c) idx.push(i);
+      this.priors[c] = idx.length / n;
+      this.means[c] = new Float64Array(m); this.vars[c] = new Float64Array(m);
+      for (let j=0;j<m;j++) {
+        let s=0; for (const i of idx) s+=X[i][j]; const mu=s/idx.length; this.means[c][j]=mu;
+        let v=0; for (const i of idx) v+=(X[i][j]-mu)**2; this.vars[c][j]=v/idx.length+1e-9;
+      }
+      await yld();
+    }
+  }
+  logP(x,c){let lp=Math.log(this.priors[c]);for(let j=0;j<x.length;j++){const mu=this.means[c][j],v=this.vars[c][j];lp-=0.5*(Math.log(2*Math.PI*v)+(x[j]-mu)**2/v);}return lp;}
+  predProba(X){return X.map(x=>{const lps=[0,1].map(c=>this.logP(x,c)),mx=Math.max(...lps),ps=lps.map(l=>Math.exp(l-mx));return ps[1]/ps.reduce((a,b)=>a+b);});}
+  predict(X){return this.predProba(X).map(p=>p>=0.5?1:0);}
+}
+
+/* ── Decision Tree ── */
+class DecisionTree {
+  constructor(maxD=6, minS=4) { this.maxD=maxD; this.minS=minS; }
+  gini(y){if(!y.length)return 0;const c1=y.reduce((a,b)=>a+b,0)/y.length;return 1-c1**2-(1-c1)**2;}
+  bestSplit(X, y) {
+    const m=X[0].length, n=y.length, pg=this.gini(y);
+    let bg=-Infinity,bf=-1,bt=0;
+    for(let f=0;f<m;f++){
+      const col = new Float64Array(n); for(let i=0;i<n;i++) col[i]=X[i][f];
+      col.sort();
+      const uniqArr=[col[0]]; for(let i=1;i<n;i++) if(col[i]!==col[i-1]) uniqArr.push(col[i]);
+      const nT=Math.min(15, uniqArr.length-1);
+      for(let t=1;t<=nT;t++){
+        const qi=Math.floor(t*uniqArr.length/(nT+1));
+        const thr=(uniqArr[qi-1]+uniqArr[qi])/2;
+        let ly=[],ry=[];
+        for(let i=0;i<n;i++) X[i][f]<=thr?ly.push(y[i]):ry.push(y[i]);
+        if(!ly.length||!ry.length) continue;
+        const gain=pg-(ly.length/n)*this.gini(ly)-(ry.length/n)*this.gini(ry);
+        if(gain>bg){bg=gain;bf=f;bt=thr;}
+      }
+    }
+    return{gain:bg,feat:bf,thr:bt};
+  }
+  build(X,y,depth=0){
+    const c1=y.reduce((a,b)=>a+b,0),n=y.length,prob=c1/n;
+    if(depth>=this.maxD||n<=this.minS||c1===0||c1===n) return{leaf:true,prob,val:prob>=0.5?1:0};
+    const{gain,feat,thr}=this.bestSplit(X,y);
+    if(feat===-1||gain<=0) return{leaf:true,prob,val:prob>=0.5?1:0};
+    const lX=[],lY=[],rX=[],rY=[];
+    for(let i=0;i<n;i++){if(X[i][feat]<=thr){lX.push(X[i]);lY.push(y[i]);}else{rX.push(X[i]);rY.push(y[i]);}}
+    return{leaf:false,feat,thr,gain,left:this.build(lX,lY,depth+1),right:this.build(rX,rY,depth+1)};
+  }
+  async fit(X,y){
+    const cap=3000;
+    let sX=X,sY=y;
+    if(X.length>cap){
+      const idx=seededShuffle([...Array(X.length).keys()],55).slice(0,cap);
+      sX=idx.map(i=>X[i]); sY=idx.map(i=>y[i]);
+    }
+    await yld();
+    this.tree=this.build(sX,sY); this.nF=X[0].length;
+    this._fi=new Array(this.nF).fill(0); this._calcFI(this.tree,1);
+    await yld();
+  }
+  _calcFI(node,w){if(node.leaf)return;this._fi[node.feat]+=node.gain*w;this._calcFI(node.left,w*.5);this._calcFI(node.right,w*.5);}
+  predOne(x,node){if(node.leaf)return node.prob;return x[node.feat]<=node.thr?this.predOne(x,node.left):this.predOne(x,node.right);}
+  predProba(X){return X.map(x=>this.predOne(x,this.tree));}
+  predict(X){return this.predProba(X).map(p=>p>=0.5?1:0);}
+  featureImportance(){const s=this._fi.reduce((a,b)=>a+b)||1;return this._fi.map(v=>v/s);}
+}
+
+/* ── Random Forest ── */
+class RandomForest {
+  constructor(nT=15, maxD=5) { this.nT=nT; this.maxD=maxD; }
+  bootstrap(X,y,seed){
+    const n=X.length; let s=seed;
+    const r=()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
+    const idx=Array.from({length:n},()=>Math.floor(r()*n));
+    return{X:idx.map(i=>X[i]),y:idx.map(i=>y[i])};
+  }
+  async fit(X,y){
+    const m=X[0].length, nF=Math.max(2,Math.round(Math.sqrt(m)));
+    const nT = X.length > 3000 ? 8 : X.length > 1000 ? 12 : this.nT;
+    this.trees=[]; this.fIdx=[];
+    for(let t=0;t<nT;t++){
+      const{X:bX,y:bY}=this.bootstrap(X,y,42+t*7);
+      const all=[...Array(m).keys()]; seededShuffle(all,99+t*13);
+      const fi=all.slice(0,nF); this.fIdx.push(fi);
+      const sX=bX.map(x=>fi.map(f=>x[f]));
+      const tree=new DecisionTree(this.maxD,4);
+      await tree.fit(sX,bY);
+      this.trees.push(tree);
+      await yld();
+    }
+  }
+  predProba(X){
+    const probs=X.map(()=>0);
+    for(let t=0;t<this.trees.length;t++){
+      const sX=X.map(x=>this.fIdx[t].map(f=>x[f]));
+      this.trees[t].predProba(sX).forEach((p,i)=>probs[i]+=p);
+    }
+    return probs.map(p=>p/this.trees.length);
+  }
+  predict(X){return this.predProba(X).map(p=>p>=0.5?1:0);}
+  featureImportance(){
+    const nF=featureCols.length,imp=new Array(nF).fill(0);
+    for(let t=0;t<this.trees.length;t++){
+      const tfi=this.trees[t].featureImportance();
+      this.fIdx[t].forEach((f,j)=>imp[f]+=tfi[j]);
+    }
+    const s=imp.reduce((a,b)=>a+b)||1; return imp.map(v=>v/s);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   METRICS
+═══════════════════════════════════════════════ */
+function computeMetrics(yTrue, yPred, yProba) {
+  let tp = 0, tn = 0, fp = 0, fn = 0;
+  for (let i = 0; i < yTrue.length; i++) {
+    if (yTrue[i] === 1 && yPred[i] === 1) tp++;
+    else if (yTrue[i] === 0 && yPred[i] === 0) tn++;
+    else if (yTrue[i] === 0 && yPred[i] === 1) fp++;
+    else fn++;
+  }
+  const acc = (tp + tn) / yTrue.length;
+  const prec = tp / (tp + fp) || 0, rec = tp / (tp + fn) || 0;
+  const f1 = 2 * prec * rec / (prec + rec) || 0;
+  const spec = tn / (tn + fp) || 0;
+  const auc = computeAUC(yTrue, yProba);
+  return { acc, prec, rec, f1, auc, spec, tp, tn, fp, fn };
+}
+
+function computeAUC(yTrue, yProba) {
+  const nP = yTrue.filter(y => y === 1).length, nN = yTrue.length - nP;
+  if (!nP || !nN) return 0.5;
+  const pairs = yTrue.map((y, i) => ({ y, p: yProba[i] })).sort((a, b) => b.p - a.p);
+  let tp = 0, fp = 0, auc = 0, pFP = 0, pTP = 0;
+  for (const { y } of pairs) {
+    if (y === 1) tp++;
+    else { fp++; if (fp > pFP) { auc += (tp + pTP) / 2 * (fp - pFP) / nN; pFP = fp; pTP = tp; } }
+  }
+  auc += (nP + pTP) / 2 * (nN - pFP) / nN;
+  return auc / nP;
+}
+
+function getRocCurve(yTrue, yProba, nPts = 60) {
+  const nP = yTrue.filter(y => y === 1).length, nN = yTrue.length - nP;
+  if (!nP || !nN) return [];
+  const thresholds = Array.from({ length: nPts }, (_, i) => i / (nPts - 1)).reverse();
+  return thresholds.map(t => {
+    let tp = 0, fp = 0;
+    for (let i = 0; i < yTrue.length; i++) if (yProba[i] >= t) { yTrue[i] === 1 ? tp++ : fp++; }
+    return { fpr: fp / nN, tpr: tp / nP };
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   PIPELINE RUNNER
+═══════════════════════════════════════════════ */
+async function runPipeline() {
+  const selectedModels = [...document.querySelectorAll('.model-card.selected')].map(el => el.dataset.model);
+  if (!selectedModels.length) { alert('Select at least one model.'); return; }
+  if (!rawData.length) { alert('Load data first.'); return; }
+
+  document.getElementById('runBtn').disabled = true;
+  goStep(5);
+
+  const ratio = parseInt(document.getElementById('splitSlider').value) / 100;
+  const strat = document.getElementById('stratifyCheck').checked;
+  const { train, test } = strat ? stratifiedSplit(rawData, ratio) : simpleSplit(rawData, ratio);
+  const tfms = buildTransformers(train);
+  trainedTfms = tfms; // save for prediction step
+  trainX = train.map(r => transformRow(r, tfms));
+  trainY = train.map(r => r.__target);
+  testX  = test.map(r => transformRow(r, tfms));
+  testY  = test.map(r => r.__target);
+  testRows = test; // save raw rows for results export
+
+  modelResults = {};
+  renderTrainingUI(selectedModels);
+
+  for (const key of selectedModels) {
+    updateItem(key, 'running');
+    await new Promise(r => setTimeout(r, 40));
+    try {
+      modelResults[key] = await trainOneModel(key);
+      updateItem(key, 'done', modelResults[key].metrics.auc, modelResults[key].trainTime);
+    } catch (e) {
+      updateItem(key, 'error'); console.error(e);
+    }
+    await new Promise(r => setTimeout(r, 60));
+  }
+
+  markDone(5);
+  renderResults();
+  setupPredictStep();
+  goStep(6);
+  document.getElementById('runBtn').disabled = false;
+}
+
+async function trainOneModel(key) {
+  const modelMap = { lr: () => new LogisticRegression(), knn: () => new KNN(7), gnb: () => new GaussianNB(), dt: () => new DecisionTree(6, 4), rf: () => new RandomForest(15, 5) };
+  const model = modelMap[key]();
+  const t0 = performance.now();
+  await model.fit(trainX, trainY);
+  const trainTime = ((performance.now() - t0) / 1000).toFixed(2);
+  const yProba = model.predProbaAsync ? await model.predProbaAsync(testX) : model.predProba(testX);
+  const yPred = yProba.map(p => p >= 0.5 ? 1 : 0);
+  const metrics = computeMetrics(testY, yPred, yProba);
+  const roc = getRocCurve(testY, yProba);
+  const fi = model.featureImportance ? model.featureImportance() : null;
+  return { metrics, roc, fi, trainTime, nTrain: trainX.length, nTest: testX.length, _model: model, _testProbas: yProba, _testPreds: yPred };
+}
+
+/* ═══════════════════════════════════════════════
+   TRAINING UI
+═══════════════════════════════════════════════ */
+function renderTrainingUI(models) {
+  const n = trainX.length;
+  const sizeNote = n > 5000
+    ? `<div class="warn-box" style="margin-bottom:14px;font-size:12px">⚡ Large dataset (${n.toLocaleString()} training rows). KNN is capped at 1,200 samples; DT/RF subsample to 3,000. LR epoch count is auto-reduced. Training may still take 10–30s.</div>`
+    : '';
+  let html = sizeNote + `<div style="margin-bottom:14px;font-size:13px;color:var(--text2)">
+    Training set: <strong style="color:var(--teal)">${trainX.length.toLocaleString()}</strong> · 
+    Test set: <strong style="color:var(--blue)">${testX.length.toLocaleString()}</strong> · 
+    Features: <strong>${featureCols.length}</strong> · 
+    Target: <strong>"${targetCol}"</strong>
+  </div>`;
+  models.forEach(k => {
+    html += `<div class="training-item" id="train-${k}">
+      <div style="width:10px;height:10px;border-radius:50%;background:${MODEL_COLORS[k]};flex-shrink:0"></div>
+      <div class="training-label">${MODEL_NAMES[k]}</div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-${k}" style="width:0%"></div></div>
+      <div class="training-status" id="status-${k}">queued</div>
+    </div>`;
+  });
+  document.getElementById('trainingLog').innerHTML = html;
+}
+
+function updateItem(key, state, auc, trainTime) {
+  const el = document.getElementById(`status-${key}`), prog = document.getElementById(`prog-${key}`);
+  if (state === 'running') { el.innerHTML = '<span class="spinner"></span>'; if (prog) prog.style.width = '55%'; }
+  else if (state === 'done') {
+    el.innerHTML = `<span style="color:var(--teal)">AUC ${auc?.toFixed(4) || '—'}</span><span style="color:var(--muted);margin-left:8px">${trainTime}s</span>`;
+    el.classList.add('done');
+    if (prog) { prog.style.width = '100%'; prog.style.background = 'var(--teal)'; }
+  } else { el.textContent = 'error'; el.style.color = 'var(--red)'; }
+}
+
+/* ═══════════════════════════════════════════════
+   RESULTS
+═══════════════════════════════════════════════ */
+let rocChart = null, accChart = null, radarChart2 = null;
+
+function renderResults() {
+  const keys = Object.keys(modelResults);
+  if (!keys.length) return;
+  const sortedKeys = [...keys].sort((a, b) => modelResults[b].metrics.auc - modelResults[a].metrics.auc);
+  const best = sortedKeys[0];
+  const bm = modelResults[best].metrics;
+
+  const bestAcc = Math.max(...keys.map(k => modelResults[k].metrics.acc));
+  const bestF1  = Math.max(...keys.map(k => modelResults[k].metrics.f1));
+  const pos = testY.filter(y => y === 1).length, neg = testY.length - pos;
+
+  let html = `
+  <div class="results-hero">
+    <div class="results-kpi"><div class="kpi-label">Best AUC</div><div class="kpi-val" style="color:var(--teal)">${bm.auc.toFixed(4)}</div><div class="kpi-sub">${MODEL_NAMES[best]}</div></div>
+    <div class="results-kpi"><div class="kpi-label">Best Accuracy</div><div class="kpi-val" style="color:var(--blue)">${(bestAcc*100).toFixed(1)}%</div><div class="kpi-sub">Peak across models</div></div>
+    <div class="results-kpi"><div class="kpi-label">Best F1</div><div class="kpi-val" style="color:var(--purple)">${(bestF1*100).toFixed(1)}%</div><div class="kpi-sub">Harmonic mean P/R</div></div>
+    <div class="results-kpi"><div class="kpi-label">Test Set</div><div class="kpi-val" style="color:var(--amber)">${testY.length}</div><div class="kpi-sub">${pos} pos · ${neg} neg</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="label-sm">Model Comparison</div>
+    <div class="tbl-wrap" style="margin-top:10px"><table class="results-tbl">
+    <thead><tr><th>Model</th><th>AUC ↑</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>Specificity</th><th>F1</th><th>Train Time</th></tr></thead>
+    <tbody>`;
+
+  sortedKeys.forEach(k => {
+    const m = modelResults[k].metrics, r = modelResults[k];
+    const isBest = k === best;
+    const fmt = v => { const pct = (v * 100).toFixed(1) + '%'; const cls = v > 0.85 ? 'metric-high' : v > 0.7 ? 'metric-mid' : 'metric-low'; return `<span class="${cls}">${pct}</span>`; };
+    html += `<tr class="${isBest ? 'best-row' : ''}">
+      <td><span style="color:${MODEL_COLORS[k]}">●</span> ${MODEL_NAMES[k]} ${isBest ? '<span class="badge-best">BEST</span>' : ''}</td>
+      <td>${fmt(m.auc)}</td><td>${fmt(m.acc)}</td><td>${fmt(m.prec)}</td>
+      <td>${fmt(m.rec)}</td><td>${fmt(m.spec)}</td><td>${fmt(m.f1)}</td>
+      <td class="mono" style="color:var(--muted)">${r.trainTime}s</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div></div>
+
+  <div class="card-grid card-grid-2" style="margin-bottom:20px">
+    <div class="chart-box"><h4>ROC Curves</h4><div class="chart-canvas-wrap"><canvas id="rocChart"></canvas></div></div>
+    <div class="chart-box"><h4>Accuracy · Precision · Recall · F1</h4><div class="chart-canvas-wrap"><canvas id="accChart"></canvas></div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="label-sm" style="margin-bottom:14px">Confusion Matrices</div>
+    <div style="display:flex;flex-wrap:wrap;gap:24px">`;
+
+  sortedKeys.forEach(k => {
+    const m = modelResults[k].metrics;
+    const spec = (m.tn / (m.tn + m.fp) * 100).toFixed(0);
+    const sens = (m.rec * 100).toFixed(0);
+    html += `<div>
+      <div style="font-family:var(--font-d);font-size:13px;color:${MODEL_COLORS[k]};margin-bottom:8px;font-weight:600">${MODEL_NAMES[k]}</div>
+      <div class="cm-grid">
+        <div class="cm-cell cm-tp"><div class="cm-num">${m.tp}</div><div class="cm-lbl">TP</div></div>
+        <div class="cm-cell cm-fp"><div class="cm-num">${m.fp}</div><div class="cm-lbl">FP</div></div>
+        <div class="cm-cell cm-fn"><div class="cm-num">${m.fn}</div><div class="cm-lbl">FN</div></div>
+        <div class="cm-cell cm-tn"><div class="cm-num">${m.tn}</div><div class="cm-lbl">TN</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:var(--font-m)">Sens ${sens}% · Spec ${spec}%</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+
+  // Feature importance
+  const fiModels = sortedKeys.filter(k => modelResults[k].fi);
+  if (fiModels.length) {
+    html += `<div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="label-sm" style="margin-bottom:0">Feature Importance</div>
+        <select class="feat-select" style="width:auto" id="fiModelSelect" onchange="renderFI(this.value)">
+          ${fiModels.map(k => `<option value="${k}"${k === best ? ' selected' : ''}>${MODEL_NAMES[k]}</option>`).join('')}
+        </select>
+      </div>
+      <div id="fiContainer"></div>
+    </div>`;
+  }
+
+  // Radar
+  html += `<div class="chart-box" style="margin-bottom:20px">
+    <h4>Performance Overview — All Models</h4>
+    <div class="chart-canvas-wrap" style="height:300px"><canvas id="radarChart2"></canvas></div>
+  </div>`;
+
+  // Insights — fully generic
+  html += `<div class="card"><div class="label-sm">Analysis & Insights</div><div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">`;
+
+  html += `<div class="info-box">🏆 <strong>Best Model:</strong> ${MODEL_NAMES[best]} achieved AUC <strong>${bm.auc.toFixed(4)}</strong> · Accuracy ${(bm.acc*100).toFixed(1)}% · Precision ${(bm.prec*100).toFixed(1)}% · Recall ${(bm.rec*100).toFixed(1)}% · F1 ${(bm.f1*100).toFixed(1)}%.</div>`;
+
+  if (bm.auc >= 0.9)        html += `<div class="info-box">✅ AUC ≥ 0.90 indicates <strong>excellent discrimination</strong> — the model very reliably separates the two classes.</div>`;
+  else if (bm.auc >= 0.8)   html += `<div class="info-box">✅ AUC 0.80–0.90 indicates <strong>good discrimination</strong>. The model captures meaningful signal from the features.</div>`;
+  else if (bm.auc >= 0.7)   html += `<div class="warn-box">⚠️ AUC 0.70–0.80 is <strong>fair</strong>. Consider adding more informative features or trying feature engineering.</div>`;
+  else                       html += `<div class="warn-box">⚠️ AUC below 0.70 is <strong>weak</strong>. The features may not contain sufficient signal, or the data may need cleaning.</div>`;
+
+  if (Math.abs(bm.prec - bm.rec) > 0.15)
+    html += `<div class="warn-box">⚠️ Precision (${(bm.prec*100).toFixed(1)}%) and Recall (${(bm.rec*100).toFixed(1)}%) differ significantly. Consider adjusting the decision threshold to match your tolerance for false positives vs false negatives.</div>`;
+
+  const imbalance = Math.abs(pos / testY.length - 0.5);
+  if (imbalance > 0.2)
+    html += `<div class="warn-box">⚠️ <strong>Class imbalance detected</strong> (${(pos/testY.length*100).toFixed(0)}% / ${(neg/testY.length*100).toFixed(0)}% split in test set). Accuracy may be misleading — prioritise AUC and F1.</div>`;
+
+  const activeTfms = featureCols.map(c => transforms[c] !== 'none' ? `<em>${c}</em> (${transforms[c]})` : '').filter(Boolean);
+  html += `<div class="info-box">🔧 <strong>Preprocessing applied:</strong> ${activeTfms.length ? activeTfms.join(', ') : 'None — all features used as-is.'}</div>`;
+
+  if (fiModels.length) {
+    const topFeat = (() => {
+      const fi = modelResults[best].fi;
+      if (!fi) return null;
+      const pairs = featureCols.map((c, i) => ({ c, v: fi[i] })).sort((a, b) => b.v - a.v);
+      return pairs.slice(0, 3).map(p => p.c);
+    })();
+    if (topFeat) html += `<div class="info-box">📊 <strong>Most important features</strong> (${MODEL_NAMES[best]}): ${topFeat.map(f => `<em>${f}</em>`).join(', ')}.</div>`;
+  }
+
+  html += `</div></div>`;
+
+  document.getElementById('resultsContent').innerHTML = html;
+
+  requestAnimationFrame(() => {
+    renderROC(sortedKeys);
+    renderAcc(sortedKeys);
+    renderRadar(sortedKeys);
+    if (fiModels.length) renderFI(fiModels.find(k => k === best) || fiModels[0]);
+  });
+}
+
+/* ── Charts ── */
+const CD = {
+  plugins: { legend: { labels: { color: '#8ba8bc', font: { family: 'JetBrains Mono', size: 11 } } } },
+  scales: {
+    x: { ticks: { color: '#5a7280', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: 'rgba(29,48,80,.5)' } },
+    y: { ticks: { color: '#5a7280', font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: 'rgba(29,48,80,.5)' } }
+  }
+};
+
+function renderROC(keys) {
+  const ctx = document.getElementById('rocChart'); if (!ctx) return;
+  if (rocChart) rocChart.destroy();
+  const datasets = keys.map(k => ({
+    label: `${MODEL_NAMES[k]} (${modelResults[k].metrics.auc.toFixed(3)})`,
+    data: modelResults[k].roc.map(p => ({ x: p.fpr, y: p.tpr })),
+    borderColor: MODEL_COLORS[k], backgroundColor: 'transparent',
+    borderWidth: 2, pointRadius: 0, tension: 0.3, showLine: true
+  }));
+  datasets.push({
+    label: 'Random (0.500)',
+    data: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
+    borderColor: 'rgba(138,168,188,.3)', backgroundColor: 'transparent',
+    borderWidth: 1, borderDash: [5, 5], pointRadius: 0, showLine: true
+  });
+  rocChart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 400 },
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#8ba8bc', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 12 } }
+      },
+      scales: {
+        x: { type: 'linear', min: 0, max: 1,
+          title: { display: true, text: 'False Positive Rate', color: '#5a7280', font: { size: 11 } },
+          ticks: { color: '#5a7280', font: { family: 'JetBrains Mono', size: 9 }, stepSize: 0.2 },
+          grid: { color: 'rgba(29,48,80,.5)' } },
+        y: { type: 'linear', min: 0, max: 1,
+          title: { display: true, text: 'True Positive Rate', color: '#5a7280', font: { size: 11 } },
+          ticks: { color: '#5a7280', font: { family: 'JetBrains Mono', size: 9 }, stepSize: 0.2 },
+          grid: { color: 'rgba(29,48,80,.5)' } }
+      }
+    }
+  });
+}
+
+function renderAcc(keys) {
+  const ctx = document.getElementById('accChart'); if (!ctx) return;
+  if (accChart) accChart.destroy();
+  accChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Accuracy', 'Precision', 'Recall', 'F1'],
+      datasets: keys.map(k => ({
+        label: MODEL_NAMES[k], backgroundColor: MODEL_COLORS[k] + 'aa', borderColor: MODEL_COLORS[k],
+        borderWidth: 1, borderRadius: 3,
+        data: ['acc', 'prec', 'rec', 'f1'].map(m => +(modelResults[k].metrics[m] * 100).toFixed(1))
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, ...CD,
+      plugins: { ...CD.plugins, legend: { ...CD.plugins.legend, position: 'bottom' } },
+      scales: {
+        x: { ...CD.scales.x },
+        y: { ...CD.scales.y, min: 0, max: 100, ticks: { ...CD.scales.y.ticks, callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+function renderRadar(keys) {
+  const ctx = document.getElementById('radarChart2'); if (!ctx) return;
+  if (radarChart2) radarChart2.destroy();
+  radarChart2 = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['AUC', 'Accuracy', 'Precision', 'Recall', 'F1', 'Specificity'],
+      datasets: keys.map(k => ({
+        label: MODEL_NAMES[k],
+        data: ['auc', 'acc', 'prec', 'rec', 'f1', 'spec'].map(m => +(modelResults[k].metrics[m] * 100).toFixed(1)),
+        borderColor: MODEL_COLORS[k], backgroundColor: MODEL_COLORS[k] + '22', borderWidth: 2, pointBackgroundColor: MODEL_COLORS[k], pointRadius: 4
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { ticks: { color: '#5a7280', font: { family: 'JetBrains Mono', size: 9 }, stepSize: 20 }, grid: { color: 'rgba(29,48,80,.6)' }, pointLabels: { color: '#8ba8bc', font: { family: 'Rajdhani', size: 12 } }, min: 0, max: 100 } },
+      plugins: { legend: { labels: { color: '#8ba8bc', font: { family: 'JetBrains Mono', size: 11 } }, position: 'bottom' } }
+    }
+  });
+}
+
+function renderFI(key) {
+  const fi = modelResults[key]?.fi;
+  const el = document.getElementById('fiContainer'); if (!el) return;
+  if (!fi) { el.innerHTML = '<p style="color:var(--muted);font-size:13px">Feature importance not available for this model.</p>'; return; }
+  const pairs = featureCols.map((c, i) => ({ c, v: fi[i] })).sort((a, b) => b.v - a.v);
+  const max = pairs[0].v || 1;
+  el.innerHTML = pairs.map(({ c, v }) => `
+    <div class="fi-row">
+      <div class="fi-label" title="${c}">${c}</div>
+      <div class="fi-bg"><div class="fi-fill" style="width:${(v/max*100).toFixed(1)}%"></div></div>
+      <div class="fi-pct">${(v*100).toFixed(1)}%</div>
+    </div>`).join('');
+}
+
+let predictRawData = [];
+let trainedTfms    = {}; // transformers fitted on training set, saved for prediction
+
+function setupPredictStep() {
+  const keys = Object.keys(modelResults);
+  if (!keys.length) return;
+  document.getElementById('predictGate').style.display = 'none';
+  // Show which models are available
+  const active = document.getElementById('predictModelsActive');
+  active.style.display = 'block';
+  active.innerHTML = `<strong>Trained models available:</strong> ` +
+    keys.map(k => `<span style="color:${MODEL_COLORS[k]}">●</span> ${MODEL_NAMES[k]} <span style="color:var(--muted)">(AUC ${modelResults[k].metrics.auc.toFixed(3)})</span>`).join(' &nbsp;·&nbsp; ');
+  if (predictRawData.length) document.getElementById('runPredictBtn').disabled = false;
+}
+
+// Wire predict file drag/drop and input
+const _pZone  = document.getElementById('predictUploadZone');
+const _pInput = document.getElementById('predictFileInput');
+if (_pZone) {
+  _pZone.addEventListener('dragover',  e => { e.preventDefault(); _pZone.classList.add('drag'); });
+  _pZone.addEventListener('dragleave', () => _pZone.classList.remove('drag'));
+  _pZone.addEventListener('drop', e => { e.preventDefault(); _pZone.classList.remove('drag'); if (e.dataTransfer.files[0]) parsePredictCSV(e.dataTransfer.files[0]); });
+}
+if (_pInput) _pInput.addEventListener('change', e => { if (e.target.files[0]) parsePredictCSV(e.target.files[0]); });
+
+function parsePredictCSV(file) {
+  Papa.parse(file, {
+    header: true, dynamicTyping: true, skipEmptyLines: true,
+    complete(r) {
+      if (!r.data.length) { showPredictMsg('❌ Empty file.', true); return; }
+      const origFeatCols = selectedFeatureCols.filter(c => c !== targetCol && !droppedIndexCols.includes(c));
+      const missing = origFeatCols.filter(c => !(c in r.data[0]));
+      if (missing.length) {
+        showPredictMsg(`❌ Missing columns: ${missing.slice(0,5).join(', ')}${missing.length>5?'…':''}`, true);
+        return;
+      }
+      predictRawData = r.data;
+      showPredictMsg(`✅ Loaded ${r.data.length} rows · ${Object.keys(r.data[0]).length} columns. Click "Run All Models" to compare.`);
+      if (Object.keys(modelResults).length) document.getElementById('runPredictBtn').disabled = false;
+    }
+  });
+}
+
+function showPredictMsg(text, isErr = false) {
+  const el = document.getElementById('predictFileMsg');
+  el.style.display = 'block';
+  document.getElementById('predictFileMsgText').textContent = text;
+  el.style.borderColor = isErr ? 'rgba(230,57,70,.3)' : 'rgba(76,201,240,.2)';
+  el.style.background   = isErr ? 'rgba(230,57,70,.06)'  : 'rgba(76,201,240,.06)';
+}
+
+function buildPredictX(rows) {
+  return rows.map(r => {
+    const out = { ...r };
+    Object.entries(encodingMaps).forEach(([origCol, map]) => {
+      const val = r[origCol];
+      Object.keys(map).filter(k => k !== '__original').forEach(v => {
+        out[map[v]] = (String(val ?? '').trim() === String(v).trim()) ? 1 : 0;
+      });
+    });
+    return featureCols.map(c => {
+      const raw = +out[c];
+      const v   = isNaN(raw) ? 0 : raw;
+      return trainedTfms[c] ? trainedTfms[c].fn(v) : v;
+    });
+  });
+}
+
+function runPredict() {
+  if (!predictRawData.length) return;
+  const keys = Object.keys(modelResults).filter(k => modelResults[k]._model);
+  if (!keys.length) {
+    document.getElementById('predictResults').innerHTML =
+      `<div class="warn-box">⚠️ No usable model objects found — please retrain to enable live predictions.</div>`;
+    return;
+  }
+
+  const predictX = buildPredictX(predictRawData);
+
+  // Run every model
+  const allProbas = {}, allPreds = {};
+  keys.forEach(k => {
+    const probas = modelResults[k]._model.predProba(predictX);
+    allProbas[k] = probas;
+    allPreds[k]  = probas.map(p => p >= 0.5 ? 1 : 0);
+  });
+
+  showPredictResults(keys, allProbas, allPreds, predictRawData);
+}
+
+function showPredictResults(keys, allProbas, allPreds, rows) {
+  const posLbl   = String(posClass);
+  const negLbl   = [...new Set(rawData.map(r => r[targetCol]))].find(v => String(v) !== posLbl) ?? 'Negative';
+  const origCols = selectedFeatureCols.filter(c => c !== targetCol && !droppedIndexCols.includes(c));
+  const previewCols = origCols.slice(0, 5);
+  const n = rows.length;
+
+  // Per-model summary chips
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:18px">
+    <div class="stat-chip"><div class="s-label">Rows</div><div class="s-value" style="color:var(--blue)">${n.toLocaleString()}</div></div>`;
+  keys.forEach(k => {
+    const nPos = allPreds[k].filter(p => p === 1).length;
+    html += `<div class="stat-chip">
+      <div class="s-label" style="color:${MODEL_COLORS[k]}">${MODEL_NAMES[k].split(' ')[0]}</div>
+      <div class="s-value" style="color:var(--red)">${nPos} <span style="font-size:11px;color:var(--muted)">${posLbl}</span></div>
+      <div class="feat-meta">${n - nPos} ${negLbl}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Agreement summary
+  const nAgree = rows.filter((_, i) => {
+    const preds = keys.map(k => allPreds[k][i]);
+    return preds.every(p => p === preds[0]);
+  }).length;
+  const agreePct = (nAgree / n * 100).toFixed(1);
+  html += `<div class="${nAgree/n > 0.8 ? 'info-box' : 'warn-box'}" style="margin-bottom:18px">
+    <strong>Model agreement:</strong> All models predict the same class on <strong>${nAgree} / ${n}</strong> rows (${agreePct}%).
+    ${n - nAgree > 0 ? `<strong>${n - nAgree}</strong> rows have at least one disagreement — these are highlighted in the table.` : ''}
+  </div>`;
+
+  // Table with download controls
+  html += `<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+      <div>
+        <div class="label-sm" style="margin-bottom:2px">Side-by-Side Prediction Comparison</div>
+        <div style="font-size:12px;color:var(--muted)">${n > 200 ? 'First 200 rows shown · ' : ''}${n.toLocaleString()} total rows · ${keys.length} model${keys.length !== 1 ? 's' : ''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text2)">Download:</span>
+        <select id="predictDlModelSelect" class="feat-select" style="width:auto">
+          ${keys.map(k => `<option value="${k}">${MODEL_NAMES[k]} (AUC ${modelResults[k].metrics.auc.toFixed(3)})</option>`).join('')}
+        </select>
+        <button class="btn btn-teal btn-sm" onclick="downloadSingleModelPredictions()">⬇ CSV</button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table>
+    <thead><tr>
+      ${previewCols.map(c => `<th>${c}</th>`).join('')}
+      ${keys.map(k => `<th style="border-left:2px solid ${MODEL_COLORS[k]}20">
+        <span style="color:${MODEL_COLORS[k]}">●</span> ${MODEL_NAMES[k].split(' ')[0]}
+        <div style="font-size:9px;font-weight:400;color:var(--muted)">pred · p(${posLbl})</div>
+      </th>`).join('')}
+      <th style="color:var(--muted);font-size:10px">agree?</th>
+    </tr></thead>
+    <tbody>`;
+
+  rows.slice(0, 200).forEach((row, i) => {
+    const preds   = keys.map(k => allPreds[k][i]);
+    const agrees  = preds.every(p => p === preds[0]);
+    const rowBg   = agrees ? '' : 'style="background:rgba(255,209,102,.04)"';
+    html += `<tr ${rowBg}>
+      ${previewCols.map(c => `<td>${row[c] ?? ''}</td>`).join('')}`;
+    keys.forEach(k => {
+      const pred  = allPreds[k][i];
+      const prob  = allProbas[k][i];
+      const lbl   = pred === 1 ? posLbl : negLbl;
+      const color = pred === 1 ? 'var(--red)' : 'var(--teal)';
+      html += `<td style="border-left:2px solid ${MODEL_COLORS[k]}20">
+        <span style="color:${color};font-weight:600;font-size:12px">${lbl}</span><br>
+        <span class="mono" style="font-size:10px;color:var(--muted)">${(prob*100).toFixed(1)}%</span>
+      </td>`;
+    });
+    html += `<td style="text-align:center">${agrees
+      ? '<span style="color:var(--teal);font-size:14px">✓</span>'
+      : '<span style="color:var(--amber);font-size:12px">△</span>'
+    }</td></tr>`;
+  });
+
+  if (n > 200) {
+    html += `<tr><td colspan="${previewCols.length + keys.length + 1}" style="text-align:center;color:var(--muted);font-size:12px;padding:10px">
+      … ${(n-200).toLocaleString()} more rows — download CSV for the full dataset
+    </td></tr>`;
+  }
+
+  html += `</tbody></table></div></div>`;
+  document.getElementById('predictResults').innerHTML = html;
+
+  // Store for download
+  window._lastAllProbas = allProbas;
+  window._lastAllPreds  = allPreds;
+  window._lastPredRows2 = rows;
+  window._lastPredKeys  = keys;
+}
+
+function downloadSingleModelPredictions() {
+  const key     = document.getElementById('predictDlModelSelect')?.value;
+  const allProbas = window._lastAllProbas;
+  const allPreds  = window._lastAllPreds;
+  const rows      = window._lastPredRows2;
+  if (!rows || !key || !allProbas?.[key]) return;
+
+  const posLbl   = String(posClass);
+  const negLbl   = [...new Set(rawData.map(r => r[targetCol]))].find(v => String(v) !== posLbl) ?? 'Negative';
+  const origCols = selectedFeatureCols.filter(c => c !== targetCol && !droppedIndexCols.includes(c));
+
+  const hdr  = [...origCols, 'predicted_class', `p_${posLbl}`].join(',');
+  const body = rows.map((row, i) => {
+    const featVals = origCols.map(c => {
+      const v = String(row[c] ?? '');
+      return v.includes(',') || v.includes('"') ? `"${v.replace(/"/g,'""')}"` : v;
+    });
+    return [
+      ...featVals,
+      allPreds[key][i] === 1 ? posLbl : negLbl,
+      allProbas[key][i].toFixed(4)
+    ].join(',');
+  });
+
+  const blob = new Blob([[hdr, ...body].join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `predictions_${key}_${Date.now()}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
