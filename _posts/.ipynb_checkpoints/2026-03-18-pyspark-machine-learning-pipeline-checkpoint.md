@@ -1,7 +1,7 @@
 ---
 title:  "Machine Learning Pipeline Evaluations w/ PySpark"
 date: 2026-03-18
-permalink: /posts/2024/12/pyspark-income-predictions/
+permalink: /posts/2026/3/pyspark-income-predictions/
 header:
   teaser: pyspark-pipeline-infographic.png
 excerpt_separator: <!--more-->
