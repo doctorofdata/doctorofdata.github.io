@@ -121,7 +121,7 @@ classes: wide
 
   <div class = "project-card">
     <a href = "/projects/regression-model-explorer/">
-      <img src = "/images/regression-explorer-preview.png" alt = "Preview of the Forecasting Explorer">
+      <img src = "/images/regressionpipe.png" alt = "Preview of the Forecasting Explorer">
     </a>
     <div class = "project-card-body">
       <h2>
