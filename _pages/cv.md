@@ -59,7 +59,6 @@ redirect_from:
 >    <div class = 'title'><strong>Senior Data Scientist</strong></div>
 >    <div class = 'dates' style = "color:gray"><em>November 2022 - May 2024</em></div>
 >    <div class = 'duties'><ul>
->                                <li>Vice President of Enterprise Architecture Transformation & Implementation</li>
 >                                <li>Worked with team to develop an LLM application allowing end-users to query a neo4j database of operating facts in natural language</li>
 >                                <li>Developed an NLP pipeline to classify business artifacts according to a process taxonomy with 600+ outcomes</li>
 >                                <li>Created an engine to lookup search queries and match them against reference libraries using semantic similarity </li>
