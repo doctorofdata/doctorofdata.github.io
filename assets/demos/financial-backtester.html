@@ -266,11 +266,6 @@ input[type="password"]{text-transform:none}
         <label class="fl">Alpha Vantage API Key</label>
         <div id="keyStatus" class="key-status ok" style="margin-top:5px">✓ embedded in file</div>
       </div>
-
-      <div class="note" style="margin-top:4px">
-        Alpha Vantage key is embedded in this file.<br>
-        Replace the placeholder in the script before use.
-      </div>
     </div>
   </div>
 
@@ -698,7 +693,7 @@ async function fetchStooq(ticker, sd, ed) {
 }
 
 async function fetchPrices(ticker, sd, ed) {
-  const fallback = document.getElementById('fallback').value;
+  const fallback = document.getElementById('fallback')?.value || 'yahoo';
   let avErr;
   try { return await fetchAlphaVantage(ticker, sd, ed); }
   catch(e) { avErr=e; }

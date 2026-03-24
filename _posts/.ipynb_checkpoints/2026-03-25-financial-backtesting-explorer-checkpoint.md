@@ -20,33 +20,157 @@ This post briefly discusses yet another feature introduction to this site: a com
 
 <!--more-->
 
-# 🚀 *Forecasting Pipeline in Your Browser*
+# ⚙️ Introducing QuantBT: Where Strategy Meets Reality
 
-> *Because installing 14 Python packages just to fit a regression model feels… excessive.*
+> *Because every “genius” trading idea deserves a trial by fire.*
 
 <p align = "center">
   <img src = "/images/regressionpipe.png" alt = "Regression Pipeline Banner" width = "98%">
 </p>
 
-Traditional forecasting often requires a complex local environment just to test a single model variation. To lower the barrier for rapid experimentation, I’ve published an interactive **Forecasting Model Explorer** that runs entirely in the browser.
+---
 
-## Bridging the Gap in Time-Series Experimentation
+## 🧠 The Problem with Brilliant Ideas
 
-This tool is a dedicated in-browser pipeline designed to handle the nuances of time-series data without requiring a single `pip install`. It allows you to move from raw data to validated predictions in a single session.
+We’ve all had them.
 
-### Key Capabilities
+That late-night epiphany:
+- “What if I just buy when it dips?”
+- “What if RSI *actually* works this time?”
+- “What if I combine momentum with mean reversion and call it alpha?”
 
-* **Flexible Data Ingestion**: Support for multi-file CSV uploads with automated variable mapping, ensuring your features are correctly aligned for temporal analysis.
-* **Model Comparison Suite**: Experiment with several powerful forecasting algorithms, including **Prophet**, **Holt-Winters**, **ARIMA**, and **Simple Moving Average (SMA)**, to see which best captures your data's trend and seasonality.
-* **Robust Validation Framework**: Beyond simple fitting, the tool utilizes **holdout data validation** to provide realistic performance expectations.
-* **Quantifiable Metrics**: Evaluate your models using industry-standard time-series metrics: **MAE**, **RMSE**, and **MAPE**.
+The problem isn’t the idea.
 
-## A Client-Side Pipeline
+The problem is **reality**.
 
-The core philosophy of this project is to provide a high-fidelity, "zero-install" experience. By performing the computation on the client side, the explorer ensures data privacy and immediate visual feedback during the parameter tuning process.
+Markets are noisy, unforgiving, and deeply unimpressed by intuition alone.
 
 ---
 
-**Explore the tool here:** [Regression and Forecasting Model Explorer](doctorofdata.github.io/projects/regression-model-explorer/)
+## 🔬 Enter: QuantBT
 
-*I'm looking to expand the validation suite next—if you have specific metrics or models you'd like to see included, feel free to reach out via the contact page!*
+Today, I’m adding a new interactive tool to the site:
+
+**A fully client-side, zero-install quantitative strategy backtester.**
+
+No fluff. No abstractions. Just:
+- Real market data  
+- Real strategy logic  
+- Real performance outcomes  
+
+All running directly in your browser.
+
+---
+
+## 🧪 What It Actually Does
+
+At its core, QuantBT lets you:
+
+### 📊 Build a Portfolio
+Add any set of tickers—from FAANG to obscure picks—and treat them as a unified system.
+
+### ⚙️ Choose a Strategy
+Out of the box, you can experiment with:
+
+- Moving Average Crossovers  
+- RSI Thresholds  
+- Bollinger Bands  
+- MACD Signals  
+- Momentum Models  
+- Mean Reversion  
+
+Each with tunable parameters (because defaults are lies we tell ourselves).
+
+---
+
+### ⏱ Run Historical Simulations
+Define:
+- Time horizon  
+- Capital allocation  
+- Position sizing  
+
+Then let the engine simulate every signal, trade, and portfolio evolution.
+
+---
+
+### 📈 Analyze What Actually Happened
+
+Not what *should* have happened.
+
+Not what *felt* right.
+
+What actually happened.
+
+You’ll get:
+- Portfolio return & growth curves  
+- Sharpe, Sortino, and drawdown metrics  
+- Per-asset breakdowns  
+- Signal-level insights  
+- A raw computation log (because transparency matters)
+
+---
+
+## 🧵 Under the Hood
+
+This isn’t a toy wrapper.
+
+It’s a deliberately engineered system featuring:
+
+- Multi-source market data ingestion (Alpha Vantage + fallbacks)  
+- Indicator computation from scratch (no black boxes)  
+- Strategy-specific signal engines  
+- Portfolio simulation with position tracking  
+- Risk and performance analytics  
+- A terminal-style execution log for full traceability  
+
+All implemented in a single, self-contained interface.
+
+---
+
+## 🧠 Why This Exists
+
+Because most people:
+- Overfit
+- Cherry-pick
+- Or worse… never test anything at all
+
+QuantBT forces a different behavior:
+
+> **Test first. Believe later.**
+
+---
+
+## ⚠️ A Necessary Disclaimer
+
+This tool is for:
+- Exploration  
+- Education  
+- Curiosity  
+
+It is **not** financial advice.
+
+If your strategy works here, it *might* survive the real world.
+
+If it fails here, it almost certainly won’t.
+
+---
+
+## 🚀 Try It Yourself
+
+Load it up. Break it. Tune it.
+
+Find out:
+- Which ideas collapse instantly  
+- Which ones almost work  
+- And which ones are worth digging into  
+
+Because in quantitative work, the only thing better than a good idea…
+
+is a **tested one**.
+
+---
+
+*Welcome to QuantBT.*  
+*Where hypotheses go to either die… or evolve.*
+
+**Explore the tool here:** [Forecasting Backtester](doctorofdata.github.io/projects/financial-backtester/)

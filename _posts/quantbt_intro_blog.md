@@ -1,32 +1,6 @@
----
-title: "Financial Portfolio Backtesting: A Zero-Install Explorer Tool"
-date: 2026-03-23
-layout: single
-categories:
-  - Projects
-  - Machine Learning
-tags:
-  - Time Series
-  - Forecasting
-  - Prophet
-  - Data Visualization
-permalink: /posts/2026/3/financial-backtester/
-header:
-  teaser: regressionpipe.png
-excerpt_separator: <!--more-->
----
-
-This post briefly discusses yet another feature introduction to this site: a comprehensive, no-code, drag&drop interface for evaluating various trading strategies on asset portfolios
-
-<!--more-->
-
 # ⚙️ Introducing QuantBT: Where Strategy Meets Reality
 
 > *Because every “genius” trading idea deserves a trial by fire.*
-
-<p align = "center">
-  <img src = "/images/regressionpipe.png" alt = "Regression Pipeline Banner" width = "98%">
-</p>
 
 ---
 
@@ -172,5 +146,3 @@ is a **tested one**.
 
 *Welcome to QuantBT.*  
 *Where hypotheses go to either die… or evolve.*
-
-**Explore the tool here:** [Forecasting Backtester](doctorofdata.github.io/projects/financial-backtester/)
