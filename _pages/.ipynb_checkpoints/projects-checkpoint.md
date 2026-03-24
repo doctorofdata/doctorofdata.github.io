@@ -125,14 +125,14 @@ classes: wide
     </a>
     <div class = "project-card-body">
       <h2>
-        <a class = "project-title" href = "/projects/regression-model-explorer/">
-          Forecasting and Regression Explorer
+        <a class = "project-title" href = "/projects/financial-backtester/">
+          Financial Backtesting Explorer
         </a>
       </h2>
       <p>
-        Explore regression and forecasting techniques with generalized-additive models, and more.
+        Explore asset trading techniques and backtest your strategies.
       </p>
-      <a class="project-link" href="/projects/regression-model-explorer/">
+      <a class="project-link" href="/projects/financial-backtester/">
         Open project →
       </a>
     </div>

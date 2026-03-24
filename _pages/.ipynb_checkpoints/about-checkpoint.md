@@ -46,6 +46,10 @@ knowledge.
 
 ------------------------------------------------------------------------
 
+<p align="center">
+  <img src = "/images/mldslifecycle.png" />
+</p>
+
 ### 🌍 The Data Science Pipeline
 
     Data Sources

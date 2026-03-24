@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantBT — Portfolio Backtester</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+
+/* ─── TOKENS ──────────────────────────────────────────────── */
+:root {
+  --bg:   #020407;
+  --s0:   #050910;
+  --s1:   #09101E;
+  --s2:   #0E1828;
+  --b0:   #121C2E;
+  --b1:   #1A2840;
+  --b2:   #223050;
+  --tx:   #C4D4EE;
+  --dim:  #627898;
+  --mute: #2A3A52;
+  --acc:  #E09000;
+  --acc2: rgba(224,144,0,.12);
+  --grn:  #15B882;
+  --grn2: rgba(21,184,130,.10);
+  --red:  #EE3348;
+  --red2: rgba(238,51,72,.10);
+  --blu:  #3A8CEE;
+  --blu2: rgba(58,140,238,.10);
+  --cya:  #00BED0;
+  --pur:  #8060E4;
+  --ylw:  #DEBA20;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.5}
+
+/* ─── APP SHELL ───────────────────────────────────────────── */
+.app{display:grid;grid-template-columns:270px 1fr;grid-template-rows:46px 1fr;height:100vh}
+
+/* ─── HEADER ──────────────────────────────────────────────── */
+.hdr{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;background:var(--s0);border-bottom:1px solid var(--b0);z-index:50}
+.brand{display:flex;align-items:baseline;gap:9px}
+.bn{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:var(--acc);letter-spacing:-.02em}
+.bt{font-size:9px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase}
+.hdr-r{display:flex;align-items:center;gap:14px}
+.sys-pill{display:flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--b0);
+  border-radius:2px;padding:3px 9px;font-size:9px;color:var(--dim);letter-spacing:.08em}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--mute);flex-shrink:0}
+.dot.ready{background:var(--grn);box-shadow:0 0 5px var(--grn)}
+.dot.running{background:var(--acc);animation:blink .8s ease-in-out infinite}
+.dot.error{background:var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.1}}
+.dscl{font-size:9px;color:var(--mute)}
+
+/* ─── SIDEBAR ─────────────────────────────────────────────── */
+.sidebar{background:var(--s0);border-right:1px solid var(--b0);display:flex;flex-direction:column;
+  gap:12px;padding:12px 11px;overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+
+.sh{font-size:8px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);
+  display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.sh::after{content:'';flex:1;height:1px;background:var(--b0)}
+
+.pnl{background:var(--s1);border:1px solid var(--b0);border-radius:3px;padding:9px}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:4px;min-height:22px;margin-bottom:7px}
+.chip{display:inline-flex;align-items:center;gap:3px;background:var(--acc2);border:1px solid var(--acc);
+  border-radius:2px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--acc);
+  letter-spacing:.06em;animation:pop .12s ease}
+@keyframes pop{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+.cx{background:none;border:none;color:var(--acc);cursor:pointer;font-size:12px;line-height:1;
+  opacity:.5;padding:0;transition:opacity .1s}
+.cx:hover{opacity:1}
+.irow{display:flex;gap:5px}
+
+input,select{background:var(--bg);border:1px solid var(--b0);border-radius:2px;color:var(--tx);
+  font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 8px;
+  outline:none;width:100%;transition:border-color .12s}
+input[type="text"]{text-transform:uppercase}
+input:focus,select:focus{border-color:var(--acc)}
+select{cursor:pointer}
+input[type="password"]{text-transform:none}
+
+.badd{background:var(--acc2);border:1px solid var(--acc);border-radius:2px;color:var(--acc);
+  cursor:pointer;font-size:18px;font-weight:700;padding:0 10px;flex-shrink:0;transition:background .1s}
+.badd:hover{background:rgba(224,144,0,.22)}
+
+.presets{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.bpre{background:var(--s1);border:1px solid var(--b0);border-radius:2px;color:var(--dim);
+  cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 7px;
+  letter-spacing:.05em;transition:all .1s}
+.bpre:hover{border-color:var(--acc);color:var(--acc)}
+
+.f{margin-bottom:7px}.f:last-child{margin-bottom:0}
+.fl{display:block;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+
+/* strategy params sections */
+.strat-params{display:none}.strat-params.active{display:block}
+
+.brun{width:100%;background:var(--acc);border:none;border-radius:3px;color:#060400;
+  cursor:pointer;font-family:'Syne',sans-serif;font-size:11px;font-weight:800;
+  letter-spacing:.14em;padding:11px;text-transform:uppercase;transition:all .12s;margin-top:2px}
+.brun:hover:not(:disabled){box-shadow:0 0 18px rgba(224,144,0,.35)}
+.brun:active:not(:disabled){transform:scale(.98)}
+.brun:disabled{opacity:.3;cursor:not-allowed}
+
+.note{font-size:9px;color:var(--mute);line-height:1.65;padding:2px}
+.note strong{color:var(--dim)}
+.note a{color:var(--acc);text-decoration:none}
+.note a:hover{text-decoration:underline}
+
+/* key status badge */
+.key-status{display:inline-flex;align-items:center;gap:4px;font-size:9px;
+  border-radius:2px;padding:2px 7px;border:1px solid;margin-top:5px}
+.key-status.ok{color:var(--grn);border-color:var(--grn);background:var(--grn2)}
+.key-status.demo{color:var(--ylw);border-color:var(--ylw);background:rgba(222,186,32,.08)}
+.key-status.none{color:var(--mute);border-color:var(--mute)}
+
+/* ─── MAIN ────────────────────────────────────────────────── */
+.main{display:grid;grid-template-rows:auto 1fr 210px;overflow:hidden}
+
+/* ─── STAT BAR ────────────────────────────────────────────── */
+.sbar{display:grid;grid-template-columns:repeat(5,1fr);background:var(--s0);border-bottom:1px solid var(--b0)}
+.sv{padding:9px 13px;border-right:1px solid var(--b0)}
+.sv:last-child{border-right:none}
+.svl{font-size:8px;color:var(--mute);letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px}
+.svv{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--dim);line-height:1}
+.svv.pos{color:var(--grn)}.svv.neg{color:var(--red)}.svv.acc{color:var(--acc)}
+.svs{font-size:8px;color:var(--mute);margin-top:2px}
+
+/* ─── CENTRE ──────────────────────────────────────────────── */
+.centre{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.tbar{display:flex;align-items:center;background:var(--s0);border-bottom:1px solid var(--b0);padding:0 13px}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--mute);cursor:pointer;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;padding:9px 11px;transition:all .12s}
+.tab:hover{color:var(--tx)}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+
+.tpanels{flex:1;overflow:hidden;min-height:0}
+.tpanel{display:none;height:100%;overflow-y:auto;padding:12px;flex-direction:column;gap:12px}
+.tpanel.active{display:flex}
+.tpanel::-webkit-scrollbar{width:3px}
+.tpanel::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+
+/* chart */
+.cwrap{background:var(--s0);border:1px solid var(--b0);border-radius:3px;padding:13px}
+.chdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.cttl{font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.ttabs{display:flex;gap:4px;flex-wrap:wrap}
+.ttab{background:var(--s1);border:1px solid var(--b0);border-radius:2px;color:var(--dim);cursor:pointer;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 8px;
+  letter-spacing:.06em;transition:all .1s}
+.ttab:hover{border-color:var(--cya);color:var(--cya)}
+.ttab.active{background:var(--blu2);border-color:var(--blu);color:var(--blu)}
+
+/* ─── STATS GRID ──────────────────────────────────────────── */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:9px}
+.acard{background:var(--s0);border:1px solid var(--b0);border-radius:3px;overflow:hidden;animation:fup .3s ease}
+@keyframes fup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.achdr{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;
+  border-bottom:1px solid var(--b0);background:var(--s1)}
+.atk{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--acc)}
+.aret{font-size:10px;font-weight:700;padding:2px 7px;border-radius:2px;border:1px solid}
+.aret.pos{color:var(--grn);border-color:var(--grn);background:var(--grn2)}
+.aret.neg{color:var(--red);border-color:var(--red);background:var(--red2)}
+.acbody{padding:9px 11px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px 4px;margin-bottom:9px}
+.ml{font-size:7px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.mv{font-size:11px;font-weight:600;color:var(--tx)}
+.mv.pos{color:var(--grn)}.mv.neg{color:var(--red)}.mv.acc{color:var(--acc)}
+.mv.cya{color:var(--cya)}.mv.pur{color:var(--pur)}.mv.dim{color:var(--dim)}.mv.ylw{color:var(--ylw)}
+.spkwrap{border-top:1px solid var(--b0);padding-top:7px}
+.spklbl{font-size:7px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.spkwrap svg{display:block;width:100%;height:38px}
+
+.cmpwrap{background:var(--s0);border:1px solid var(--b0);border-radius:3px;overflow:hidden}
+.cmpt{width:100%;border-collapse:collapse;font-size:10px}
+.cmpt th{font-size:7px;color:var(--mute);letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  text-align:right;padding:7px 11px;border-bottom:1px solid var(--b0);white-space:nowrap}
+.cmpt th:first-child{text-align:left}
+.cmpt td{padding:7px 11px;border-bottom:1px solid var(--b0);text-align:right}
+.cmpt tr:last-child td{border-bottom:none}
+.cmpt tr:hover td{background:var(--s1)}
+.cmpt td:first-child{text-align:left;font-weight:700;color:var(--acc);letter-spacing:.06em}
+.cp{color:var(--grn)}.cn{color:var(--red)}.cd{color:var(--dim)}.cc{color:var(--cya)}.cy{color:var(--ylw)}
+
+/* ─── EMPTY ───────────────────────────────────────────────── */
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:11px;color:var(--mute);text-align:center;padding:40px}
+.ei{font-size:34px;opacity:.12}
+.ett{font-size:12px;color:var(--dim);font-weight:500}
+.eb{font-size:10px;color:var(--mute);line-height:1.75;max-width:300px}
+
+/* ─── TERMINAL ────────────────────────────────────────────── */
+.tshell{background:#010306;border-top:1px solid #0A1420;display:flex;flex-direction:column;overflow:hidden}
+.tbar2{display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;height:30px;border-bottom:1px solid #0A1420;flex-shrink:0}
+.tbarl{display:flex;align-items:center;gap:9px}
+.tdots{display:flex;gap:4px}
+.td{width:9px;height:9px;border-radius:50%}
+.td.r{background:#FF5F57}.td.y{background:#FEBC2E}.td.g{background:#28C840}
+.tname{font-size:9px;color:#243444;letter-spacing:.09em;text-transform:uppercase}
+.tbarr{display:flex;gap:3px}
+.tbtn{background:none;border:1px solid #0A1420;border-radius:2px;color:#243444;cursor:pointer;
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.06em;
+  padding:2px 7px;text-transform:uppercase;transition:all .1s}
+.tbtn:hover{border-color:#182A3C;color:#3A5468}
+
+.tbody{flex:1;overflow-y:auto;padding:5px 12px 7px;font-size:10.5px;line-height:1.72}
+.tbody::-webkit-scrollbar{width:3px}
+.tbody::-webkit-scrollbar-thumb{background:#0A1420;border-radius:2px}
+
+.tl{display:flex;gap:7px;white-space:pre-wrap;word-break:break-all}
+.tts{color:#101E2E;flex-shrink:0;user-select:none;font-size:9.5px}
+.ttag{flex-shrink:0;font-weight:700;min-width:44px;font-size:9.5px}
+.tmsg{color:#3A5470;font-size:10px}
+
+/* tag colours */
+.INIT{color:#3A8CEE}.DATA{color:#8060E4}.CALC{color:#E09000}
+.PORT{color:#00BED0}.AGG{color:#3A8CEE}.DONE{color:#15B882}
+.WARN{color:#E07000}.ERR{color:#EE3348}.SYS{color:#162030}
+
+.ok{color:#15B882}.er{color:#EE3348}.ac{color:#E09000}.fx{color:#101E2E}
+.tcur{display:inline-block;width:7px;height:11px;background:#15B882;
+  animation:blink .9s step-start infinite;vertical-align:middle;margin-left:2px}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════ -->
+<header class="hdr">
+  <div class="brand">
+    <span class="bn">QuantBT</span>
+    <span class="bt">// quantitative trading strategy backtester</span>
+  </div>
+  <div class="hdr-r">
+    <div class="sys-pill">
+      <div class="dot ready" id="dot"></div>
+      <span id="sysLbl">READY</span>
+    </div>
+    <span class="dscl">Educational only · Not financial advice</span>
+  </div>
+</header>
+
+<!-- ═══ SIDEBAR ══════════════════════════════════════════════ -->
+<aside class="sidebar">
+
+  <!-- DATA SOURCE -->
+  <div>
+    <div class="sh">01 · Data Source</div>
+    <div class="pnl">
+      <div class="f">
+        <label class="fl">Alpha Vantage API Key</label>
+        <div id="keyStatus" class="key-status ok" style="margin-top:5px">✓ embedded in file</div>
+      </div>
+
+      <div class="note" style="margin-top:4px">
+        Alpha Vantage key is embedded in this file.<br>
+        Replace the placeholder in the script before use.
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTFOLIO -->
+  <div>
+    <div class="sh">02 · Portfolio</div>
+    <div class="pnl">
+      <div class="chips" id="chips"></div>
+      <div class="irow">
+        <input type="text" id="tickIn" placeholder="e.g. AAPL" maxlength="12">
+        <button class="badd" id="addBtn">+</button>
+      </div>
+    </div>
+    <div class="presets">
+      <button class="bpre" data-t="AAPL,MSFT,GOOGL,AMZN,META">FAANG+M</button>
+      <button class="bpre" data-t="NVDA,AMD,INTC,QCOM,AVGO">SEMIS</button>
+      <button class="bpre" data-t="JPM,BAC,GS,MS,WFC">BANKS</button>
+      <button class="bpre" data-t="XOM,CVX,COP,SLB,HAL">ENERGY</button>
+      <button class="bpre" data-t="JNJ,PFE,MRK,ABBV,LLY">PHARMA</button>
+    </div>
+  </div>
+
+  <!-- STRATEGY -->
+  <div>
+    <div class="sh">03 · Strategy</div>
+    <div class="pnl">
+      <div class="f">
+        <label class="fl">Algorithm</label>
+        <select id="strategy" onchange="onStratChange()">
+          <option value="ma_cross">MA Crossover</option>
+          <option value="rsi">RSI Threshold</option>
+          <option value="bbands">Bollinger Bands</option>
+          <option value="macd">MACD Signal</option>
+          <option value="momentum">Price Momentum</option>
+          <option value="mean_rev">Mean Reversion</option>
+        </select>
+      </div>
+
+      <!-- MA Crossover -->
+      <div class="strat-params active" id="p-ma_cross">
+        <div class="f"><label class="fl">MA Type</label>
+          <select id="maType"><option value="sma">Simple (SMA)</option><option value="ema">Exponential (EMA)</option></select></div>
+        <div class="f"><label class="fl">Windows</label>
+          <div class="two">
+            <div><label class="fl">Short</label><input type="number" id="maShort" value="30" min="3" max="200"></div>
+            <div><label class="fl">Long</label><input type="number"  id="maLong"  value="90" min="5" max="500"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RSI -->
+      <div class="strat-params" id="p-rsi">
+        <div class="f"><label class="fl">RSI Period</label><input type="number" id="rsiPeriod" value="14" min="3" max="100"></div>
+        <div class="f"><label class="fl">Thresholds</label>
+          <div class="two">
+            <div><label class="fl">Oversold ↓</label><input type="number" id="rsiOS" value="30" min="5" max="49"></div>
+            <div><label class="fl">Overbought ↑</label><input type="number" id="rsiOB" value="70" min="51" max="95"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bollinger Bands -->
+      <div class="strat-params" id="p-bbands">
+        <div class="f"><label class="fl">Period</label><input type="number" id="bbPeriod" value="20" min="5" max="200"></div>
+        <div class="f"><label class="fl">Std Dev Multiplier</label><input type="number" id="bbStd" value="2" min="0.5" max="5" step="0.25"></div>
+      </div>
+
+      <!-- MACD -->
+      <div class="strat-params" id="p-macd">
+        <div class="f"><label class="fl">EMA Periods</label>
+          <div class="three">
+            <div><label class="fl">Fast</label><input type="number" id="macdFast" value="12" min="2" max="100"></div>
+            <div><label class="fl">Slow</label><input type="number" id="macdSlow" value="26" min="5" max="200"></div>
+            <div><label class="fl">Signal</label><input type="number" id="macdSig"  value="9"  min="2" max="100"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Momentum -->
+      <div class="strat-params" id="p-momentum">
+        <div class="f"><label class="fl">Lookback Period (days)</label><input type="number" id="momLookback" value="20" min="2" max="500"></div>
+        <div class="f"><label class="fl">Threshold (%)</label><input type="number" id="momThresh" value="0" min="-20" max="20" step="0.5"></div>
+      </div>
+
+      <!-- Mean Reversion -->
+      <div class="strat-params" id="p-mean_rev">
+        <div class="f"><label class="fl">Lookback Period (days)</label><input type="number" id="mrPeriod" value="20" min="5" max="200"></div>
+        <div class="f"><label class="fl">Entry Z-Score (↓ buy)</label><input type="number" id="mrEntry" value="-1.5" min="-4" max="-0.5" step="0.25"></div>
+        <div class="f"><label class="fl">Exit Z-Score (↑ sell)</label><input type="number" id="mrExit" value="0.5" min="0" max="4" step="0.25"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTFOLIO CONFIG -->
+  <div>
+    <div class="sh">04 · Config</div>
+    <div class="pnl">
+      <div class="f"><label class="fl">Date Range</label>
+        <div class="two">
+          <input type="date" id="startDate" value="2020-01-01">
+          <input type="date" id="endDate"   value="2024-12-31">
+        </div>
+      </div>
+      <div class="f"><label class="fl">Capital per stock ($)</label>
+        <input type="number" id="initCap" value="10000" min="100" step="500">
+      </div>
+      <div class="f"><label class="fl">Shares per signal</label>
+        <input type="number" id="shares" value="100" min="1">
+      </div>
+    </div>
+  </div>
+
+  <button class="brun" id="runBtn">▶ RUN BACKTEST</button>
+
+  <div class="note">
+    <strong>Strategies:</strong> MA Cross · RSI · Bollinger Bands · MACD · Momentum · Mean Reversion<br><br>
+    <strong>Data:</strong> Alpha Vantage (primary, CORS-safe) with Yahoo Finance / Stooq fallback.
+  </div>
+</aside>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════ -->
+<main class="main" id="mainGrid">
+
+  <!-- Stat bar -->
+  <div class="sbar">
+    <div class="sv"><div class="svl">Portfolio Return</div><div class="svv" id="sv-ret">—</div><div class="svs" id="ss-ret">aggregate</div></div>
+    <div class="sv"><div class="svl">Sharpe Ratio</div><div class="svv" id="sv-sharpe">—</div><div class="svs">annualised · rf=0</div></div>
+    <div class="sv"><div class="svl">Max Drawdown</div><div class="svv neg" id="sv-dd">—</div><div class="svs">peak-to-trough</div></div>
+    <div class="sv"><div class="svl">Signal Events</div><div class="svv" id="sv-sigs">—</div><div class="svs">buy + sell combined</div></div>
+    <div class="sv"><div class="svl">Strategy</div><div class="svv acc" id="sv-strat" style="font-size:12px;line-height:1.2">—</div><div class="svs" id="ss-period">—</div></div>
+  </div>
+
+  <!-- Tab bar + panels -->
+  <div class="centre">
+    <div class="tbar">
+      <button class="tab active" data-panel="portfolio">◈ Portfolio</button>
+      <button class="tab" data-panel="signals">◎ Signals</button>
+      <button class="tab" data-panel="stats">◻ Asset Stats</button>
+    </div>
+    <div class="tpanels">
+
+      <div class="tpanel active" id="panel-portfolio">
+        <div class="empty">
+          <div class="ei">◈</div>
+          <div class="ett">No results yet</div>
+          <div class="eb">Configure your portfolio and strategy, then click <strong style="color:var(--acc)">Run Backtest</strong>. Live computation logs appear in the terminal below.</div>
+        </div>
+      </div>
+
+      <div class="tpanel" id="panel-signals">
+        <div class="empty">
+          <div class="ei">◎</div>
+          <div class="ett">No signals yet</div>
+          <div class="eb">Run a backtest to view per-ticker signal charts with entry/exit markers.</div>
+        </div>
+      </div>
+
+      <div class="tpanel" id="panel-stats">
+        <div class="empty">
+          <div class="ei">◻</div>
+          <div class="ett">No statistics yet</div>
+          <div class="eb">Run a backtest to view per-asset performance metrics, risk indicators, and comparison table.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="tshell" id="tshell">
+    <div class="tbar2">
+      <div class="tbarl">
+        <div class="tdots"><div class="td r"></div><div class="td y"></div><div class="td g"></div></div>
+        <span class="tname">quantbt@backtester — computation log</span>
+      </div>
+      <div class="tbarr">
+        <button class="tbtn" id="tbtnExp">↕ expand</button>
+        <button class="tbtn" id="tbtnClr">✕ clear</button>
+      </div>
+    </div>
+    <div class="tbody" id="tbody">
+      <div class="tl"><span class="tts">[--:--:--]</span><span class="ttag SYS">[SYS ]</span><span class="tmsg fx">QuantBT ready. Configure portfolio and strategy, then run.</span></div>
+      <span class="tcur"></span>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  EMBEDDED CONFIG
+// ═══════════════════════════════════════════════════════════════
+const ALPHA_VANTAGE_API_KEY = '045D9ZD5OBORJZ8I';
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let tickers   = [];
+let portChart = null;
+let sigChart  = null;
+let termLines = [];
+let expanded  = false;
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════════
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const now   = () => new Date().toTimeString().slice(0,8);
+const pct   = (v,d=1) => (v>=0?'+':'')+(v*100).toFixed(d)+'%';
+const $m    = v => {
+  const a=Math.abs(v), s=v<0?'-':'';
+  return s+'$'+(a>=1e6?(a/1e6).toFixed(2)+'M':a>=1e3?(a/1e3).toFixed(1)+'k':Math.round(a).toLocaleString());
+};
+const fix   = (v,d=2) => +v.toFixed(d);
+const mean  = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const std   = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,r)=>s+(r-m)**2,0)/arr.length); };
+
+// ═══════════════════════════════════════════════════════════════
+//  TERMINAL
+// ═══════════════════════════════════════════════════════════════
+async function tLog(type, text, delay=0) {
+  if (delay) await sleep(delay);
+  termLines.push({ ts:now(), type, text });
+  flushTerm();
+}
+
+function flushTerm() {
+  const $tb = document.getElementById('tbody');
+  $tb.innerHTML = termLines.map(l => {
+    const t = l.type.trim();
+    const msg = l.text
+      .replace(/✓([^<\n]*)/g,'<span class="ok">✓$1</span>')
+      .replace(/✗([^<\n]*)/g,'<span class="er">✗$1</span>')
+      .replace(/⚠([^<\n]*)/g,'<span class="ac">⚠$1</span>')
+      .replace(/(═{3,}|─{3,})/g,'<span class="fx">$1</span>');
+    return `<div class="tl"><span class="tts">[${l.ts}]</span><span class="ttag ${t}">[${l.type.padEnd(4)}]</span><span class="tmsg">${msg}</span></div>`;
+  }).join('') + '<span class="tcur"></span>';
+  $tb.scrollTop = $tb.scrollHeight;
+}
+
+let termToggle = false;
+document.getElementById('tbtnExp').addEventListener('click', function() {
+  termToggle = !termToggle;
+  document.getElementById('mainGrid').style.gridTemplateRows = termToggle
+    ? 'auto 1fr 380px' : 'auto 1fr 210px';
+  this.textContent = termToggle ? '↕ shrink' : '↕ expand';
+});
+document.getElementById('tbtnClr').addEventListener('click', () => { termLines=[]; flushTerm(); });
+
+// ═══════════════════════════════════════════════════════════════
+//  SYSTEM STATUS
+// ═══════════════════════════════════════════════════════════════
+function setSys(state, label) {
+  document.getElementById('dot').className = 'dot '+state;
+  document.getElementById('sysLbl').textContent = label;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  API KEY WATCH
+// ═══════════════════════════════════════════════════════════════
+const $kstat = document.getElementById('keyStatus');
+
+function updateKeyStatus() {
+  const hasKey = ALPHA_VANTAGE_API_KEY && ALPHA_VANTAGE_API_KEY !== 'REPLACE_WITH_YOUR_ALPHA_VANTAGE_KEY';
+  if (!hasKey) {
+    $kstat.className='key-status demo'; 
+    $kstat.textContent='◑ demo mode — MSFT & IBM only';
+  } else {
+    $kstat.className='key-status ok'; 
+    $kstat.textContent='✓ embedded key set';
+  }
+}
+updateKeyStatus();
+
+// ═══════════════════════════════════════════════════════════════
+//  STRATEGY SWITCHER
+// ═══════════════════════════════════════════════════════════════
+function onStratChange() {
+  const v = document.getElementById('strategy').value;
+  document.querySelectorAll('.strat-params').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('p-'+v);
+  if (el) el.classList.add('active');
+}
+window.onStratChange = onStratChange;
+
+// ═══════════════════════════════════════════════════════════════
+//  TICKER MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+function addTicker(raw) {
+  const sym = raw.trim().toUpperCase().replace(/[^A-Z0-9.\-^]/g,'');
+  if (!sym || sym.length>10 || tickers.includes(sym)) return;
+  tickers.push(sym); renderChips();
+}
+function removeTicker(sym) { tickers=tickers.filter(t=>t!==sym); renderChips(); }
+window.removeTicker = removeTicker;
+
+function renderChips() {
+  document.getElementById('chips').innerHTML = tickers.map(t =>
+    `<div class="chip">${t}<button class="cx" onclick="removeTicker('${t}')">×</button></div>`
+  ).join('');
+}
+
+document.getElementById('addBtn').addEventListener('click', () => {
+  document.getElementById('tickIn').value.split(/[\s,;]+/).forEach(addTicker);
+  document.getElementById('tickIn').value='';
+  document.getElementById('tickIn').focus();
+});
+document.getElementById('tickIn').addEventListener('keydown', e => {
+  if (e.key==='Enter'||e.key===',') {
+    e.preventDefault();
+    document.getElementById('tickIn').value.split(/[\s,;]+/).forEach(addTicker);
+    document.getElementById('tickIn').value='';
+  }
+});
+document.querySelectorAll('.bpre').forEach(b => {
+  b.addEventListener('click', () => { tickers=[]; b.dataset.t.split(',').forEach(addTicker); });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════
+document.querySelector('.tbar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab'); if(!btn) return;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  DATA FETCHING
+// ═══════════════════════════════════════════════════════════════
+
+/** Alpha Vantage — TIME_SERIES_DAILY_ADJUSTED.
+    Returns CORS headers natively; no proxy needed. */
+async function fetchAlphaVantage(ticker, sd, ed) {
+  const key = ALPHA_VANTAGE_API_KEY || 'demo';
+  const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${ticker}&outputsize=full&apikey=${key}`;
+  let resp;
+  try { resp = await fetch(url, { signal: AbortSignal.timeout(18000) }); }
+  catch(e) { throw new Error('AV network error: '+e.message); }
+  if (!resp.ok) throw new Error('AV HTTP '+resp.status);
+  const json = await resp.json();
+
+  if (json['Note'])    throw new Error('AV rate limit: try again in 1 min');
+  if (json['Information']) throw new Error('AV: '+json['Information'].slice(0,80));
+  if (json['Error Message']) throw new Error('AV: invalid symbol');
+
+  const ts = json['Time Series (Daily)'];
+  if (!ts) throw new Error('AV: no time series in response');
+
+  const start = new Date(sd), end = new Date(ed);
+  const data = Object.entries(ts)
+    .filter(([d]) => { const dt=new Date(d); return dt>=start && dt<=end; })
+    .map(([d,v]) => ({ date:d, price: parseFloat(v['5. adjusted close'] || v['4. close']) }))
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  if (data.length < 10) throw new Error('AV: too few data points ('+data.length+')');
+  return { data, src:'alphavantage' };
+}
+
+/** CORS proxies for fallback sources */
+const PROXIES = [
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
+];
+
+async function proxyFetch(url, timeout=14000) {
+  for (const px of PROXIES) {
+    try {
+      const r = await fetch(px(url), { signal:AbortSignal.timeout(timeout) });
+      if (r.ok) return r;
+    } catch(_) { continue; }
+  }
+  return null;
+}
+
+async function fetchYahoo(ticker, sd, ed) {
+  const p1 = Math.floor(new Date(sd).getTime()/1000);
+  const p2 = Math.floor(new Date(ed).getTime()/1000);
+  const urls = [
+    `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${p1}&period2=${p2}&interval=1d`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${p1}&period2=${p2}&interval=1d`
+  ];
+  for (const url of urls) {
+    const resp = await proxyFetch(url);
+    if (!resp) continue;
+    let json; try { json=await resp.json(); } catch { continue; }
+    if (json.chart?.error || !json.chart?.result?.[0]) continue;
+    const r=json.chart.result[0];
+    const stamps=r.timestamp;
+    const closes=r.indicators?.adjclose?.[0]?.adjclose ?? r.indicators?.quote?.[0]?.close;
+    if (!stamps||!closes) continue;
+    const data=[];
+    for(let i=0;i<stamps.length;i++)
+      if(closes[i]!=null) data.push({date:new Date(stamps[i]*1000).toISOString().split('T')[0],price:closes[i]});
+    if(data.length>10) return {data,src:'yahoo'};
+  }
+  throw new Error('yahoo: all attempts failed');
+}
+
+async function fetchStooq(ticker, sd, ed) {
+  const d1=sd.replace(/-/g,''), d2=ed.replace(/-/g,'');
+  const syms = ticker.startsWith('^')||ticker.includes('.')
+    ? [ticker] : [ticker.toLowerCase()+'.us', ticker.toLowerCase()];
+  for (const sym of syms) {
+    const url=`https://stooq.com/q/d/l/?s=${sym}&d1=${d1}&d2=${d2}&i=d`;
+    const resp=await proxyFetch(url);
+    if(!resp) continue;
+    const text=await resp.text();
+    if(!text||text.length<80||text.toLowerCase().includes('no data')) continue;
+    const lines=text.trim().split('\n');
+    const data=[];
+    for(let i=1;i<lines.length;i++){
+      const c=lines[i].split(',');
+      if(c.length<5) continue;
+      const price=parseFloat(c[4]);
+      if(c[0]&&!isNaN(price)&&price>0) data.push({date:c[0].trim(),price});
+    }
+    if(data.length>10) return {data:data.sort((a,b)=>a.date.localeCompare(b.date)),src:'stooq'};
+  }
+  throw new Error('stooq: no usable data');
+}
+
+async function fetchPrices(ticker, sd, ed) {
+  const fallback = document.getElementById('fallback').value;
+  let avErr;
+  try { return await fetchAlphaVantage(ticker, sd, ed); }
+  catch(e) { avErr=e; }
+
+  if (fallback==='none') throw avErr;
+
+  await tLog('WARN', `  ⚠ AV failed for ${ticker}: ${avErr.message} — trying ${fallback}...`);
+
+  if (fallback==='yahoo') {
+    try { return await fetchYahoo(ticker, sd, ed); } catch(e) {
+      try { return await fetchStooq(ticker, sd, ed); } catch(e2) {
+        throw new Error(`All sources failed: AV(${avErr.message}) Yahoo(${e.message}) Stooq(${e2.message})`);
+      }
+    }
+  }
+  if (fallback==='stooq') {
+    try { return await fetchStooq(ticker, sd, ed); } catch(e) {
+      try { return await fetchYahoo(ticker, sd, ed); } catch(e2) {
+        throw new Error(`All sources failed: AV(${avErr.message}) Stooq(${e.message}) Yahoo(${e2.message})`);
+      }
+    }
+  }
+  throw avErr;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MATH PRIMITIVES
+// ═══════════════════════════════════════════════════════════════
+function sma(arr, w) {
+  return arr.map((_,i) => {
+    const sl = arr.slice(Math.max(0,i-w+1),i+1);
+    return sl.reduce((a,b)=>a+b,0)/sl.length;
+  });
+}
+
+function ema(arr, w) {
+  const k = 2/(w+1);
+  const out = [arr[0]];
+  for(let i=1;i<arr.length;i++) out.push(arr[i]*k + out[i-1]*(1-k));
+  return out;
+}
+
+function rollingStd(arr, w) {
+  return arr.map((_,i) => {
+    const sl = arr.slice(Math.max(0,i-w+1),i+1);
+    const m  = sl.reduce((a,b)=>a+b,0)/sl.length;
+    const v  = sl.reduce((s,x)=>s+(x-m)**2,0)/sl.length;
+    return Math.sqrt(v);
+  });
+}
+
+function rsi(arr, period) {
+  const changes = arr.map((v,i) => i===0 ? 0 : v-arr[i-1]);
+  const out = new Array(arr.length).fill(50);
+  let avgG = 0, avgL = 0;
+  for(let i=1;i<=period;i++) {
+    if(changes[i]>0) avgG+=changes[i]; else avgL+=Math.abs(changes[i]);
+  }
+  avgG/=period; avgL/=period;
+  out[period] = avgL===0 ? 100 : 100 - (100/(1+avgG/avgL));
+  for(let i=period+1;i<arr.length;i++) {
+    const g = changes[i]>0?changes[i]:0;
+    const l = changes[i]<0?Math.abs(changes[i]):0;
+    avgG = (avgG*(period-1)+g)/period;
+    avgL = (avgL*(period-1)+l)/period;
+    out[i] = avgL===0 ? 100 : 100 - (100/(1+avgG/avgL));
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STRATEGY ENGINE
+// ═══════════════════════════════════════════════════════════════
+function stratMACross(priceData, params) {
+  const prices = priceData.map(d=>d.price);
+  const mafn   = params.maType==='ema' ? ema : sma;
+  const shortMA= mafn(prices, params.short);
+  const longMA = mafn(prices, params.long);
+  const warmup = params.short;
+  const signal = prices.map((_,i) => i<warmup ? 0 : (shortMA[i]>longMA[i] ? 1 : 0));
+  const pos    = signal.map((s,i) => i===0?0:s-signal[i-1]);
+  return priceData.map((d,i) => ({
+    ...d, signal:signal[i], position:pos[i],
+    ind1:shortMA[i], ind2:longMA[i],
+    ind1Name:`${params.maType.toUpperCase()}(${params.short})`,
+    ind2Name:`${params.maType.toUpperCase()}(${params.long})`
+  }));
+}
+
+function stratRSI(priceData, params) {
+  const prices = priceData.map(d=>d.price);
+  const rsiArr = rsi(prices, params.period);
+  let inPos = false;
+  const signal = rsiArr.map((r,i) => {
+    if (i < params.period) return 0;
+    if (!inPos && r < params.os) inPos = true;
+    if (inPos  && r > params.ob) inPos = false;
+    return inPos ? 1 : 0;
+  });
+  const pos = signal.map((s,i) => i===0?0:s-signal[i-1]);
+  return priceData.map((d,i) => ({
+    ...d, signal:signal[i], position:pos[i],
+    ind1:rsiArr[i], ind2:null,
+    ind1Name:`RSI(${params.period})`, ind2Name:null
+  }));
+}
+
+function stratBBands(priceData, params) {
+  const prices  = priceData.map(d=>d.price);
+  const middle  = sma(prices, params.period);
+  const rstd    = rollingStd(prices, params.period);
+  const upper   = middle.map((m,i) => m + params.k*rstd[i]);
+  const lower   = middle.map((m,i) => m - params.k*rstd[i]);
+  let inPos = false;
+  const signal = prices.map((p,i) => {
+    if (i < params.period) return 0;
+    if (!inPos && p < lower[i])  inPos = true;
+    if (inPos  && p > upper[i])  inPos = false;
+    return inPos ? 1 : 0;
+  });
+  const pos = signal.map((s,i) => i===0?0:s-signal[i-1]);
+  return priceData.map((d,i) => ({
+    ...d, signal:signal[i], position:pos[i],
+    ind1:upper[i], ind2:lower[i], ind3:middle[i],
+    ind1Name:'BB Upper', ind2Name:'BB Lower'
+  }));
+}
+
+function stratMACD(priceData, params) {
+  const prices  = priceData.map(d=>d.price);
+  const fastEMA = ema(prices, params.fast);
+  const slowEMA = ema(prices, params.slow);
+  const macdLine= fastEMA.map((f,i) => f - slowEMA[i]);
+  const sigLine = ema(macdLine, params.signal);
+  const warmup  = params.slow + params.signal;
+  let inPos = false;
+  const signal = macdLine.map((m,i) => {
+    if (i < warmup) return 0;
+    const cross = m > sigLine[i];
+    inPos = cross;
+    return cross ? 1 : 0;
+  });
+  const pos = signal.map((s,i) => i===0?0:s-signal[i-1]);
+  return priceData.map((d,i) => ({
+    ...d, signal:signal[i], position:pos[i],
+    ind1:macdLine[i], ind2:sigLine[i],
+    ind1Name:'MACD', ind2Name:`Signal(${params.signal})`
+  }));
+}
+
+function stratMomentum(priceData, params) {
+  const prices = priceData.map(d=>d.price);
+  const thresh = params.threshold / 100;
+  const signal = prices.map((p,i) => {
+    if (i < params.lookback) return 0;
+    const momentum = (p - prices[i-params.lookback]) / prices[i-params.lookback];
+    return momentum > thresh ? 1 : 0;
+  });
+  const momentumArr = prices.map((p,i) =>
+    i < params.lookback ? 0 : (p-prices[i-params.lookback])/prices[i-params.lookback]*100
+  );
+  const pos = signal.map((s,i) => i===0?0:s-signal[i-1]);
+  return priceData.map((d,i) => ({
+    ...d, signal:signal[i], position:pos[i],
+    ind1:momentumArr[i], ind2:null,
+    ind1Name:`Momentum(${params.lookback})%`, ind2Name:null
+  }));
+}
+
+function stratMeanRev(priceData, params) {
+  const prices = priceData.map(d=>d.price);
+  const means  = sma(prices, params.period);
+  const stds   = rollingStd(prices, params.period);
+  const zscore = prices.map((p,i) => stds[i]>0 ? (p-means[i])/stds[i] : 0);
+  let inPos = false;
+  const signal = zscore.map((z,i) => {
+    if (i < params.period) return 0;
+    if (!inPos && z < params.entry) inPos = true;
+    if (inPos  && z > params.exit)  inPos = false;
+    return inPos ? 1 : 0;
+  });
+  const pos = signal.map((s,i) => i===0?0:s-signal[i-1]);
+  return priceData.map((d,i) => ({
+    ...d, signal:signal[i], position:pos[i],
+    ind1:zscore[i], ind2:means[i],
+    ind1Name:`Z-Score(${params.period})`, ind2Name:`SMA(${params.period})`
+  }));
+}
+
+function getStrategyParams() {
+  const id = document.getElementById('strategy').value;
+  if (id==='ma_cross') return {
+    id, label:'MA Crossover',
+    maType:document.getElementById('maType').value,
+    short:+document.getElementById('maShort').value,
+    long:+document.getElementById('maLong').value
+  };
+  if (id==='rsi') return {
+    id, label:'RSI Threshold',
+    period:+document.getElementById('rsiPeriod').value,
+    os:+document.getElementById('rsiOS').value,
+    ob:+document.getElementById('rsiOB').value
+  };
+  if (id==='bbands') return {
+    id, label:'Bollinger Bands',
+    period:+document.getElementById('bbPeriod').value,
+    k:+document.getElementById('bbStd').value
+  };
+  if (id==='macd') return {
+    id, label:'MACD Signal',
+    fast:+document.getElementById('macdFast').value,
+    slow:+document.getElementById('macdSlow').value,
+    signal:+document.getElementById('macdSig').value
+  };
+  if (id==='momentum') return {
+    id, label:'Price Momentum',
+    lookback:+document.getElementById('momLookback').value,
+    threshold:+document.getElementById('momThresh').value
+  };
+  if (id==='mean_rev') return {
+    id, label:'Mean Reversion',
+    period:+document.getElementById('mrPeriod').value,
+    entry:+document.getElementById('mrEntry').value,
+    exit:+document.getElementById('mrExit').value
+  };
+}
+
+function applyStrategy(priceData, params) {
+  if (params.id==='ma_cross')  return stratMACross(priceData, params);
+  if (params.id==='rsi')       return stratRSI(priceData, params);
+  if (params.id==='bbands')    return stratBBands(priceData, params);
+  if (params.id==='macd')      return stratMACD(priceData, params);
+  if (params.id==='momentum')  return stratMomentum(priceData, params);
+  if (params.id==='mean_rev')  return stratMeanRev(priceData, params);
+  throw new Error('Unknown strategy: '+params.id);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PORTFOLIO SIMULATION
+// ═══════════════════════════════════════════��═══════════════════
+function computePortfolio(sigData, initCap, sharesN) {
+  const shares  = sigData.map(d => sharesN * d.signal);
+  const diff    = shares.map((s,i) => i===0 ? 0 : s-shares[i-1]);
+  let cf = 0;
+  const cash    = diff.map((d,i) => { cf += d*sigData[i].price; return initCap-cf; });
+  const holdings= shares.map((s,i) => s*sigData[i].price);
+  const total   = cash.map((c,i) => c+holdings[i]);
+  const returns = total.map((t,i) => i===0?0:(t-total[i-1])/(Math.abs(total[i-1])||1));
+  return sigData.map((d,i) => ({ ...d, shares:shares[i], holdings:holdings[i], cash:cash[i], total:total[i], returns:returns[i] }));
+}
+
+function aggregatePortfolio(results) {
+  const map = {};
+  for (const {data} of results) {
+    for (const d of data) {
+      if (!map[d.date]) map[d.date]={holdings:0,cash:0,total:0,rs:0,rn:0};
+      map[d.date].holdings+=d.holdings;
+      map[d.date].cash+=d.cash;
+      map[d.date].total+=d.total;
+      map[d.date].rs+=d.returns;
+      map[d.date].rn+=1;
+    }
+  }
+  return Object.entries(map).sort(([a],[b])=>a.localeCompare(b))
+    .map(([date,v])=>({date,holdings:v.holdings,cash:v.cash,total:v.total,returns:v.rs/(v.rn||1)}));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATISTICS
+// ═══════════════════════════════════════════════════════════════
+function computeStats(data) {
+  const totals = data.map(d=>d.total);
+  const rets   = data.map(d=>d.returns).slice(1).filter(r=>isFinite(r));
+  const n      = data.length;
+  const s=totals[0], e=totals[n-1];
+  const totalReturn=(e-s)/s;
+  const years=n/252;
+  const cagr=Math.pow(Math.abs(e/s),1/Math.max(years,.01))*Math.sign(e/s)-1;
+  const m=mean(rets), sd_=std(rets);
+  const vol=sd_*Math.sqrt(252);
+  const sharpe=sd_>0?(m/sd_)*Math.sqrt(252):0;
+  const down=rets.filter(r=>r<0);
+  const dsd=down.length>0?Math.sqrt(down.reduce((s,r)=>s+r*r,0)/rets.length):0;
+  const sortino=dsd>0?(m/dsd)*Math.sqrt(252):0;
+  let peak=s,maxDD=0,ddTmp=0,ddLen=0;
+  for(let i=1;i<totals.length;i++){
+    if(totals[i]>peak){peak=totals[i];ddTmp=0}
+    const dd=(peak-totals[i])/peak;
+    if(dd>maxDD)maxDD=dd;
+    ddTmp=dd>0?ddTmp+1:0;
+    if(ddTmp>ddLen)ddLen=ddTmp;
+  }
+  const calmar=maxDD>0?cagr/maxDD:0;
+  const winRate=rets.filter(r=>r>0).length/rets.length;
+  const sorted=[...rets].sort((a,b)=>a-b);
+  const var95=sorted[Math.floor(sorted.length*.05)]??0;
+  let wS=0,lS=0,cW=0,cL=0;
+  rets.forEach(r=>{
+    if(r>0){cW++;cL=0;if(cW>wS)wS=cW}
+    else{cL++;cW=0;if(cL>lS)lS=cL}
+  });
+  const buys=data.filter(d=>d.position>.5).length;
+  const sells=data.filter(d=>d.position<-.5).length;
+  return {totalReturn,cagr,vol,sharpe,sortino,maxDD,ddLen,calmar,winRate,
+          var95,best:Math.max(...rets),worst:Math.min(...rets),wStreak:wS,lStreak:lS,buys,sells,n};
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SPARKLINE
+// ═══════════════════════════════════════════════════════════════
+function sparkline(vals, col) {
+  if(vals.length<2) return '';
+  const W=200,H=38,min=Math.min(...vals),max=Math.max(...vals),rng=max-min||1;
+  const pts=vals.map((v,i)=>`${((i/(vals.length-1))*W).toFixed(1)},${(H-((v-min)/rng)*(H-4)-2).toFixed(1)}`);
+  const fill=vals[vals.length-1]>=vals[0]?'rgba(21,184,130,.07)':'rgba(238,51,72,.07)';
+  const area=`M ${pts[0]} L ${pts.slice(1).join(' ')} L ${pts[pts.length-1].split(',')[0]},${H} L 0,${H} Z`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${area}" fill="${fill}" stroke="none"/><polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STAT BAR UPDATE
+// ═══════════════════════════════════════════════════════════════
+function updateStatBar(agg, totalSigs, stratLabel) {
+  const tots=agg.map(d=>d.total);
+  const rets=agg.map(d=>d.returns).slice(1).filter(r=>isFinite(r));
+  const s=tots[0],e=tots[tots.length-1],mult=e/s;
+  const m=mean(rets),sd_=std(rets);
+  const sharpe=sd_>0?(m/sd_)*Math.sqrt(252):0;
+  let peak=s,maxDD=0;
+  tots.forEach(t=>{if(t>peak)peak=t;const dd=(peak-t)/peak;if(dd>maxDD)maxDD=dd;});
+
+  const $=id=>document.getElementById(id);
+  $('sv-ret').textContent=mult.toFixed(2)+'x';
+  $('sv-ret').className='svv '+(mult>=1?'pos':'neg');
+  $('ss-ret').textContent=$m(s)+' → '+$m(e);
+  $('sv-sharpe').textContent=sharpe.toFixed(2);
+  $('sv-sharpe').className='svv '+(sharpe>=1?'pos':sharpe<0?'neg':'');
+  $('sv-dd').textContent='-'+(maxDD*100).toFixed(1)+'%';
+  $('sv-sigs').textContent=totalSigs;
+  $('sv-strat').textContent=stratLabel;
+  $('ss-period').textContent=agg.length+' trading days';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER STATS TAB
+// ═══════════════════════════════════════════════════════════════
+function renderStats(results) {
+  function mv(val, cls='') { return `<div class="mv ${cls}">${val}</div>`; }
+
+  const cards = results.map(({ticker,data,stats:s}) => {
+    const rc=s.totalReturn>=0?'pos':'neg';
+    const col=s.totalReturn>=0?'#15B882':'#EE3348';
+    const spk=sparkline(data.map(d=>d.total),col);
+    return `<div class="acard">
+      <div class="achdr"><span class="atk">${ticker}</span><span class="aret ${rc}">${pct(s.totalReturn)}</span></div>
+      <div class="acbody">
+        <div class="mgrid">
+          <div><div class="ml">CAGR</div>${mv(pct(s.cagr,1),s.cagr>=0?'pos':'neg')}</div>
+          <div><div class="ml">Sharpe</div>${mv(fix(s.sharpe),s.sharpe>=1?'pos':s.sharpe<0?'neg':'dim')}</div>
+          <div><div class="ml">Sortino</div>${mv(fix(s.sortino),s.sortino>=1?'pos':s.sortino<0?'neg':'dim')}</div>
+          <div><div class="ml">Max DD</div>${mv('-'+(s.maxDD*100).toFixed(1)+'%','neg')}</div>
+          <div><div class="ml">DD Dur</div>${mv(s.ddLen+'d','neg')}</div>
+          <div><div class="ml">Calmar</div>${mv(fix(s.calmar),s.calmar>=.5?'pos':s.calmar<0?'neg':'dim')}</div>
+          <div><div class="ml">Vol ann</div>${mv((s.vol*100).toFixed(1)+'%')}</div>
+          <div><div class="ml">VaR 95%</div>${mv(pct(s.var95),'neg')}</div>
+          <div><div class="ml">Win Rate</div>${mv(pct(s.winRate,0),s.winRate>=.5?'pos':'neg')}</div>
+          <div><div class="ml">Best Day</div>${mv(pct(s.best),'pos')}</div>
+          <div><div class="ml">Worst Day</div>${mv(pct(s.worst),'neg')}</div>
+          <div><div class="ml">Signals</div>${mv(s.buys+s.sells,'cya')}</div>
+          <div><div class="ml">Win Streak</div>${mv(s.wStreak+'d','pos')}</div>
+          <div><div class="ml">Loss Streak</div>${mv(s.lStreak+'d','neg')}</div>
+          <div><div class="ml">Days</div>${mv(s.n,'dim')}</div>
+        </div>
+        <div class="spkwrap"><div class="spklbl">Portfolio value over period</div>${spk}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const rows = results.map(({ticker,stats:s}) => `
+    <tr>
+      <td>${ticker}</td>
+      <td class="${s.totalReturn>=0?'cp':'cn'}">${pct(s.totalReturn)}</td>
+      <td class="${s.cagr>=0?'cp':'cn'}">${pct(s.cagr)}</td>
+      <td>${(s.vol*100).toFixed(1)}%</td>
+      <td class="${s.sharpe>=1?'cp':s.sharpe<0?'cn':'cd'}">${fix(s.sharpe)}</td>
+      <td class="${s.sortino>=1?'cp':s.sortino<0?'cn':'cd'}">${fix(s.sortino)}</td>
+      <td class="cn">-${(s.maxDD*100).toFixed(1)}%</td>
+      <td class="${s.calmar>=.5?'cp':'cd'}">${fix(s.calmar)}</td>
+      <td class="${s.winRate>=.5?'cp':'cn'}">${(s.winRate*100).toFixed(1)}%</td>
+      <td class="cn">${pct(s.var95)}</td>
+      <td class="cc">${s.buys+s.sells}</td>
+    </tr>`).join('');
+
+  document.getElementById('panel-stats').innerHTML = `
+    <div class="sgrid">${cards}</div>
+    <div class="cmpwrap"><table class="cmpt">
+      <thead><tr>
+        <th>TICKER</th><th>RETURN</th><th>CAGR</th><th>VOL</th>
+        <th>SHARPE</th><th>SORTINO</th><th>MAX DD</th>
+        <th>CALMAR</th><th>WIN%</th><th>VAR95</th><th>SIGNALS</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CHART HELPERS
+// ═══════════════════════════════════════════════════════════════
+const MONO='\'JetBrains Mono\',monospace';
+const GRID='#0C1825'; const TICK='#283848';
+const TT={backgroundColor:'#030609',borderColor:'#0C1825',borderWidth:1,
+  titleColor:'#C4D4EE',bodyColor:'#3A5468',
+  titleFont:{family:MONO,size:11},bodyFont:{family:MONO,size:10},padding:10};
+const sc=(yFn)=>({
+  x:{ticks:{color:TICK,font:{family:MONO,size:9},maxTicksLimit:9,maxRotation:0},grid:{color:GRID}},
+  y:{ticks:{color:TICK,font:{family:MONO,size:9},callback:yFn},grid:{color:GRID}}
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN RUN
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('runBtn').addEventListener('click', async () => {
+  if (!tickers.length) { await tLog('WARN','⚠ Add at least one ticker first.'); return; }
+
+  const sd     = document.getElementById('startDate').value;
+  const ed     = document.getElementById('endDate').value;
+  const initCap= +document.getElementById('initCap').value;
+  const sh     = +document.getElementById('shares').value;
+  const params = getStrategyParams();
+
+  if (params.id==='ma_cross' && params.short>=params.long) {
+    await tLog('WARN','⚠ Short MA window must be less than long window.'); return;
+  }
+  if (params.id==='macd' && params.fast>=params.slow) {
+    await tLog('WARN','⚠ MACD fast period must be less than slow period.'); return;
+  }
+  if (new Date(sd)>=new Date(ed)) {
+    await tLog('WARN','⚠ Start date must be before end date.'); return;
+  }
+
+  document.getElementById('runBtn').disabled=true;
+  setSys('running','RUNNING');
+
+  termLines=[];
+  await tLog('INIT','═'.repeat(52));
+  await tLog('INIT','  QuantBT  ·  Quantitative Strategy Backtester',16);
+  await tLog('INIT','═'.repeat(52),16);
+  await tLog('INIT',`  Strategy : ${params.label}`,20);
+  await tLog('INIT',`  Tickers  : ${tickers.join(', ')}  (${tickers.length} asset${tickers.length>1?'s':''})`,16);
+  await tLog('INIT',`  Period   : ${sd}  →  ${ed}`,16);
+  await tLog('INIT',`  Capital  : ${$m(initCap)} per stock  ·  ${sh} shares/signal`,16);
+  if (params.id==='ma_cross') await tLog('INIT',`  Params   : ${params.maType.toUpperCase()} ${params.short}d / ${params.long}d`,16);
+  if (params.id==='rsi')      await tLog('INIT',`  Params   : period=${params.period}  oversold=${params.os}  overbought=${params.ob}`,16);
+  if (params.id==='bbands')   await tLog('INIT',`  Params   : period=${params.period}  k=${params.k}σ`,16);
+  if (params.id==='macd')     await tLog('INIT',`  Params   : fast=${params.fast}  slow=${params.slow}  signal=${params.signal}`,16);
+  if (params.id==='momentum') await tLog('INIT',`  Params   : lookback=${params.lookback}d  threshold=${params.threshold}%`,16);
+  if (params.id==='mean_rev') await tLog('INIT',`  Params   : period=${params.period}d  entry z=${params.entry}  exit z=${params.exit}`,16);
+  await tLog('DATA','─'.repeat(52),26);
+  await tLog('DATA','  Fetching price histories...',16);
+
+  const results=[]; const failed=[];
+
+  for (let i=0;i<tickers.length;i++) {
+    const sym=tickers[i];
+    await tLog('DATA',`  → ${sym}: requesting data...`,30);
+    let fetchedData, fetchSrc;
+    try {
+      ({data:fetchedData,src:fetchSrc}=await fetchPrices(sym,sd,ed));
+      await tLog('DATA',`  ✓ ${sym}: ${fetchedData.length} trading days  [${fetchSrc}]`);
+    } catch(e) {
+      await tLog('ERR ',`  ✗ ${sym}: ${e.message}`);
+      failed.push(sym); await sleep(200); continue;
+    }
+
+    await tLog('CALC',`  → ${sym}: computing ${params.label} signals...`,24);
+    const sigData=applyStrategy(fetchedData, params);
+    const buys=sigData.filter(d=>d.position>.5).length;
+    const sells=sigData.filter(d=>d.position<-.5).length;
+    await tLog('CALC',`  ✓ ${sym}: ${buys+sells} signal events  (${buys}↑ buy  /  ${sells}↓ sell)`,14);
+
+    await tLog('PORT',`  → ${sym}: simulating portfolio...`,22);
+    const portData=computePortfolio(sigData,initCap,sh);
+    const ps=portData[0].total, pe=portData[portData.length-1].total;
+    const stats=computeStats(portData);
+    await tLog('PORT',`  ✓ ${sym}: ${$m(ps)} → ${$m(pe)}  (${(pe/ps).toFixed(2)}x)  Sharpe=${stats.sharpe.toFixed(2)}  MaxDD=-${(stats.maxDD*100).toFixed(1)}%`,14);
+
+    results.push({ticker:sym, data:portData, sigData, stats});
+    await sleep(160);
+  }
+
+  if (!results.length) {
+    await tLog('ERR ','  ✗ No data retrieved. Check tickers / API key and retry.');
+    setSys('error','FAILED');
+    document.getElementById('runBtn').disabled=false; return;
+  }
+
+  await tLog('AGG ','─'.repeat(52),26);
+  await tLog('AGG ',`  Aggregating ${results.length} portfolio${results.length>1?'s':''} by date...`,16);
+  const agg=aggregatePortfolio(results);
+  const totalSigs=results.reduce((s,r)=>s+r.stats.buys+r.stats.sells,0);
+  await tLog('AGG ',`  ✓ ${agg.length} aggregate trading days  ·  ${totalSigs} total signal events`,14);
+
+  const at=agg.map(d=>d.total);
+  const ar=agg.map(d=>d.returns).slice(1).filter(r=>isFinite(r));
+  const am=mean(ar), as2=std(ar);
+  const asharpe=as2>0?(am/as2)*Math.sqrt(252):0;
+  let ap=at[0],add2=0; at.forEach(t=>{if(t>ap)ap=t;const dd=(ap-t)/ap;if(dd>add2)add2=dd;});
+
+  await tLog('DONE','═'.repeat(52),30);
+  await tLog('DONE',`  TOTAL RETURN   ${(at[at.length-1]/at[0]).toFixed(2)}x  (${pct(at[at.length-1]/at[0]-1)})`,16);
+  await tLog('DONE',`  SHARPE RATIO   ${asharpe.toFixed(2)}  (annualised, rf=0)`,16);
+  await tLog('DONE',`  MAX DRAWDOWN  -${(add2*100).toFixed(1)}%`,16);
+  await tLog('DONE',`  SIGNALS        ${totalSigs} events across ${results.length} ticker${results.length>1?'s':''}`,16);
+  if (failed.length) await tLog('WARN',`  ⚠ Failed tickers: ${failed.join(', ')}`,16);
+  await tLog('DONE','═'.repeat(52),16);
+
+  updateStatBar(agg, totalSigs, params.label);
+
+  document.getElementById('panel-portfolio').innerHTML = `
+    <div class="cwrap">
+      <div class="chdr">
+        <span class="cttl">◈ aggregate portfolio value</span>
+        <span style="font-size:9px;color:var(--mute)">${results.length} asset${results.length>1?'s':''} · ${agg.length} days · ${params.label}</span>
+      </div>
+      <canvas id="portCanvas" height="255"></canvas>
+    </div>`;
+
+  if (portChart){portChart.destroy();portChart=null;}
+  portChart=new Chart(document.getElementById('portCanvas'),{
+    type:'line',
+    data:{
+      labels:agg.map(d=>d.date),
+      datasets:[
+        {label:'Strategy ($)',data:agg.map(d=>d.total),
+          borderColor:'#E09000',backgroundColor:'rgba(224,144,0,.06)',
+          borderWidth:2,fill:true,pointRadius:0,tension:.1},
+        {label:'Initial Capital',data:agg.map(()=>agg[0].total),
+          borderColor:'#182838',borderWidth:1,borderDash:[5,4],
+          pointRadius:0,fill:false}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:true,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:true,labels:{color:TICK,font:{family:MONO,size:9},boxWidth:12,padding:12}},
+        tooltip:{...TT,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${$m(ctx.raw)}`}}
+      },
+      scales:sc(v=>$m(v))
+    }
+  });
+
+  const tabs=results.map((r,i)=>`<button class="ttab ${i===0?'active':''}" data-idx="${i}">${r.ticker}</button>`).join('');
+  document.getElementById('panel-signals').innerHTML = `
+    <div class="cwrap">
+      <div class="chdr">
+        <span class="cttl">◎ price · ${params.label} · signals</span>
+        <div class="ttabs" id="sigTabs">${tabs}</div>
+      </div>
+      <canvas id="sigCanvas" height="255"></canvas>
+    </div>`;
+
+  function drawSig(r) {
+    if (sigChart){sigChart.destroy();sigChart=null;}
+    const data=r.sigData;
+    const hasInd2=data[0].ind2!==null && params.id!=='rsi' && params.id!=='momentum' && params.id!=='mean_rev';
+
+    const datasets=[
+      {label:'Price',data:data.map(d=>d.price),borderColor:'#C4D4EE',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:5,yAxisID:'y'},
+    ];
+
+    if (params.id==='rsi') {
+      datasets.push({label:data[0].ind1Name,data:data.map(d=>d.ind1),borderColor:'#8060E4',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y2'});
+    } else if (params.id==='macd') {
+      datasets.push({label:'MACD',data:data.map(d=>d.ind1),borderColor:'#3A8CEE',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y2'});
+      datasets.push({label:data[0].ind2Name,data:data.map(d=>d.ind2),borderColor:'#EE3348',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:3,yAxisID:'y2'});
+    } else if (params.id==='momentum') {
+      datasets.push({label:data[0].ind1Name,data:data.map(d=>d.ind1),borderColor:'#00BED0',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y2'});
+    } else if (params.id==='mean_rev') {
+      datasets.push({label:data[0].ind2Name,data:data.map(d=>d.ind2),borderColor:'#3A8CEE',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y'});
+      datasets.push({label:data[0].ind1Name+'(rhs)',data:data.map(d=>d.ind1),borderColor:'#8060E4',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:3,yAxisID:'y2'});
+    } else {
+      datasets.push({label:data[0].ind1Name,data:data.map(d=>d.ind1),borderColor:'#3A8CEE',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y'});
+      if (hasInd2) datasets.push({label:data[0].ind2Name,data:data.map(d=>d.ind2),borderColor:'#8060E4',
+        borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:3,yAxisID:'y'});
+      if (params.id==='bbands') datasets.push({label:'BB Mid',data:data.map(d=>d.ind3),borderColor:'#627898',
+        borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false,tension:0,order:2,yAxisID:'y'});
+    }
+
+    datasets.push({label:'Buy ▲',data:data.map(d=>d.position>.5?d.price:null),
+      type:'line',showLine:false,spanGaps:false,
+      borderColor:'#15B882',backgroundColor:'#15B882',
+      pointRadius:7,pointStyle:'triangle',order:1,yAxisID:'y'});
+    datasets.push({label:'Sell ▼',data:data.map(d=>d.position<-.5?d.price:null),
+      type:'line',showLine:false,spanGaps:false,
+      borderColor:'#EE3348',backgroundColor:'#EE3348',
+      pointRadius:7,pointStyle:'triangle',pointRotation:180,order:0,yAxisID:'y'});
+
+    const useY2 = ['rsi','macd','momentum','mean_rev'].includes(params.id);
+    const scales2 = useY2 ? {
+      y: {ticks:{color:TICK,font:{family:MONO,size:9},callback:v=>'$'+v.toFixed(0)},grid:{color:GRID},position:'left'},
+      y2:{ticks:{color:TICK,font:{family:MONO,size:9}},grid:{display:false},position:'right'},
+      x: {ticks:{color:TICK,font:{family:MONO,size:9},maxTicksLimit:9,maxRotation:0},grid:{color:GRID}}
+    } : sc(v=>'$'+v.toFixed(0));
+
+    sigChart=new Chart(document.getElementById('sigCanvas'),{
+      type:'line',
+      data:{labels:data.map(d=>d.date),datasets},
+      options:{
+        responsive:true,maintainAspectRatio:true,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:true,labels:{color:TICK,font:{family:MONO,size:9},boxWidth:12,padding:10}},
+          tooltip:{...TT,callbacks:{label:ctx=>ctx.raw==null?null:` ${ctx.dataset.label}: ${typeof ctx.raw==='object'?ctx.raw.y.toFixed(2):ctx.raw.toFixed(2)}`}}
+        },
+        scales:scales2
+      }
+    });
+  }
+
+  drawSig(results[0]);
+  document.getElementById('sigTabs').addEventListener('click', e => {
+    const btn=e.target.closest('.ttab'); if(!btn) return;
+    document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    drawSig(results[+btn.dataset.idx]);
+  });
+
+  renderStats(results);
+
+  setSys('ready','COMPLETE');
+  document.getElementById('runBtn').disabled=false;
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+['MSFT','IBM'].forEach(addTicker);
+</script>
+</body>
+</html>
