@@ -7,7 +7,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
-
 /* ─── TOKENS ──────────────────────────────────────────────── */
 :root {
   --bg:   #020407;
@@ -116,12 +115,6 @@ input[type="password"]{text-transform:none}
 .note a{color:var(--acc);text-decoration:none}
 .note a:hover{text-decoration:underline}
 
-/* key status badge */
-.key-status{display:inline-flex;align-items:center;gap:4px;font-size:9px;
-  border-radius:2px;padding:2px 7px;border:1px solid;margin-top:5px}
-.key-status.ok{color:var(--grn);border-color:var(--grn);background:var(--grn2)}
-.key-status.demo{color:var(--ylw);border-color:var(--ylw);background:rgba(222,186,32,.08)}
-.key-status.none{color:var(--mute);border-color:var(--mute)}
 
 /* ─── MAIN ────────────────────────────────────────────────── */
 .main{display:grid;grid-template-rows:auto 1fr 210px;overflow:hidden}
@@ -227,6 +220,7 @@ input[type="password"]{text-transform:none}
 .INIT{color:#3A8CEE}.DATA{color:#8060E4}.CALC{color:#E09000}
 .PORT{color:#00BED0}.AGG{color:#3A8CEE}.DONE{color:#15B882}
 .WARN{color:#E07000}.ERR{color:#EE3348}.SYS{color:#162030}
+.CMP{color:#DEBA20}.OPT{color:#15B882}
 
 .ok{color:#15B882}.er{color:#EE3348}.ac{color:#E09000}.fx{color:#101E2E}
 .tcur{display:inline-block;width:7px;height:11px;background:#15B882;
@@ -235,6 +229,90 @@ input[type="password"]{text-transform:none}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--b1);border-radius:2px}
+
+/* ─── COMPARE TAB ─────────────────────────────────────────── */
+.cmp-ticker-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.cmp-ttab{background:var(--s1);border:1px solid var(--b0);border-radius:2px;color:var(--dim);
+  cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  padding:3px 9px;letter-spacing:.06em;transition:all .1s}
+.cmp-ttab.active{background:var(--acc2);border-color:var(--acc);color:var(--acc)}
+.cmp-ttab:hover:not(.active){border-color:var(--cya);color:var(--cya)}
+
+.cmph{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;flex-wrap:wrap;gap:5px}
+.cmpttl{font-size:9px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.cmpnote{font-size:8px;color:var(--mute)}
+
+.sct{width:100%;border-collapse:collapse;font-size:10px}
+.sct th{font-size:7px;color:var(--mute);letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;text-align:right;padding:7px 11px;border-bottom:1px solid var(--b0);white-space:nowrap}
+.sct th:first-child{text-align:left}
+.sct td{padding:6px 11px;border-bottom:1px solid var(--b0);text-align:right;font-size:10px}
+.sct tr:last-child td{border-bottom:none}
+.sct tr:hover td{background:rgba(255,255,255,.02)}
+.sct td:first-child{text-align:left;color:var(--dim);letter-spacing:.04em}
+.sct .best{color:var(--grn);font-weight:700}
+.sct .worst{color:var(--red)}
+.sct .rec-row td{background:rgba(21,184,130,.04)}
+.sct .rec-row td:first-child{color:var(--grn);font-weight:700}
+.badge-rec{display:inline-block;background:var(--grn2);border:1px solid var(--grn);
+  border-radius:2px;color:var(--grn);font-size:7px;padding:1px 5px;margin-left:5px;
+  font-weight:700;letter-spacing:.08em;vertical-align:middle}
+.badge-cur{display:inline-block;background:var(--acc2);border:1px solid var(--acc);
+  border-radius:2px;color:var(--acc);font-size:7px;padding:1px 5px;margin-left:5px;
+  font-weight:700;letter-spacing:.08em;vertical-align:middle}
+
+.def-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:9px;color:var(--dim)}
+.def-grid div{line-height:1.6}
+.def-grid strong{color:var(--acc)}
+
+/* ─── OPTIMIZE TAB ────────────────────────────────────────── */
+.opt-methods{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:0}
+@media(max-width:1100px){.opt-methods{grid-template-columns:repeat(2,1fr)}}
+.ocard{background:var(--s0);border:1px solid var(--b0);border-radius:3px;padding:11px;transition:border-color .15s}
+.ocard.best-card{border-color:var(--grn);background:rgba(21,184,130,.03)}
+.ocard-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.ocard-name{font-size:9px;font-weight:700;color:var(--acc);letter-spacing:.1em;text-transform:uppercase}
+.ocard.best-card .ocard-name{color:var(--grn)}
+.ocard-sub{font-size:8px;color:var(--mute);margin-top:2px}
+.osharpe{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;text-align:right;line-height:1}
+.osharpe.pos{color:var(--grn)}.osharpe.neg{color:var(--red)}.osharpe.dim{color:var(--dim)}
+.wbar-wrap{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+.wbar-row{display:flex;align-items:center;gap:6px}
+.wbar-label{font-size:8px;color:var(--dim);width:38px;text-align:right;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.wbar-track{flex:1;background:var(--b0);border-radius:1px;height:7px;overflow:hidden}
+.wbar-fill{height:100%;border-radius:1px}
+.wbar-val{font-size:8px;color:var(--dim);width:34px;flex-shrink:0;text-align:right}
+.omet-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:8px;border-top:1px solid var(--b0);padding-top:8px}
+.omet-l{font-size:7px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.omet-v{font-size:10px;font-weight:600;color:var(--tx)}
+.omet-v.pos{color:var(--grn)}.omet-v.neg{color:var(--red)}.omet-v.acc{color:var(--acc)}
+
+.corr-cell{text-align:center!important;font-size:9px!important;padding:5px 9px!important;transition:background .1s}
+.opt-2col{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.caveat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;font-size:9px;color:var(--dim)}
+.caveat-grid div{line-height:1.65}
+.caveat-grid strong{color:var(--acc)}
+
+/* ─── STRATEGY SELECTION (compare tab) ───────────────────────── */
+.sel-btn{background:transparent;border:1px solid var(--b1);border-radius:2px;color:var(--dim);
+  font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:3px 8px;cursor:pointer;
+  white-space:nowrap;transition:all .15s}
+.sel-btn:hover{border-color:var(--acc);color:var(--acc)}
+.sel-btn.sel-active{background:var(--acc2);border-color:var(--acc);color:var(--acc);font-weight:700}
+tr.sel-row td{background:rgba(224,144,0,.04)}
+tr.sel-row td:first-child{border-left:2px solid var(--acc)}
+.cmp-action-bar{position:sticky;bottom:0;background:var(--s1);border-top:1px solid var(--b0);
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:10}
+.cmp-action-summary{font-size:9px;color:var(--dim);line-height:1.7;flex:1}
+.cmp-action-summary strong{color:var(--tx)}
+.brun-sel{background:var(--acc);border:none;border-radius:3px;color:#060400;
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;
+  padding:9px 20px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.brun-sel:hover{box-shadow:0 0 18px rgba(224,144,0,.35)}
+.brun-sel:active{transform:scale(.98)}
+.brun-sel:disabled{opacity:.3;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -274,83 +352,12 @@ input[type="password"]{text-transform:none}
       <button class="bpre" data-t="JPM,BAC,GS,MS,WFC">BANKS</button>
       <button class="bpre" data-t="XOM,CVX,COP,SLB,HAL">ENERGY</button>
       <button class="bpre" data-t="JNJ,PFE,MRK,ABBV,LLY">PHARMA</button>
+      <button class="bpre" data-t="MSFT,IBM">DEMO (no key)</button>
     </div>
   </div>
-
-  <!-- STRATEGY -->
-  <div>
-    <div class="sh">02 · Strategy</div>
-    <div class="pnl">
-      <div class="f">
-        <label class="fl">Algorithm</label>
-        <select id="strategy" onchange="onStratChange()">
-          <option value="ma_cross">MA Crossover</option>
-          <option value="rsi">RSI Threshold</option>
-          <option value="bbands">Bollinger Bands</option>
-          <option value="macd">MACD Signal</option>
-          <option value="momentum">Price Momentum</option>
-          <option value="mean_rev">Mean Reversion</option>
-        </select>
-      </div>
-
-      <!-- MA Crossover -->
-      <div class="strat-params active" id="p-ma_cross">
-        <div class="f"><label class="fl">MA Type</label>
-          <select id="maType"><option value="sma">Simple (SMA)</option><option value="ema">Exponential (EMA)</option></select></div>
-        <div class="f"><label class="fl">Windows</label>
-          <div class="two">
-            <div><label class="fl">Short</label><input type="number" id="maShort" value="30" min="3" max="200"></div>
-            <div><label class="fl">Long</label><input type="number"  id="maLong"  value="90" min="5" max="500"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RSI -->
-      <div class="strat-params" id="p-rsi">
-        <div class="f"><label class="fl">RSI Period</label><input type="number" id="rsiPeriod" value="14" min="3" max="100"></div>
-        <div class="f"><label class="fl">Thresholds</label>
-          <div class="two">
-            <div><label class="fl">Oversold ↓</label><input type="number" id="rsiOS" value="30" min="5" max="49"></div>
-            <div><label class="fl">Overbought ↑</label><input type="number" id="rsiOB" value="70" min="51" max="95"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bollinger Bands -->
-      <div class="strat-params" id="p-bbands">
-        <div class="f"><label class="fl">Period</label><input type="number" id="bbPeriod" value="20" min="5" max="200"></div>
-        <div class="f"><label class="fl">Std Dev Multiplier</label><input type="number" id="bbStd" value="2" min="0.5" max="5" step="0.25"></div>
-      </div>
-
-      <!-- MACD -->
-      <div class="strat-params" id="p-macd">
-        <div class="f"><label class="fl">EMA Periods</label>
-          <div class="three">
-            <div><label class="fl">Fast</label><input type="number" id="macdFast" value="12" min="2" max="100"></div>
-            <div><label class="fl">Slow</label><input type="number" id="macdSlow" value="26" min="5" max="200"></div>
-            <div><label class="fl">Signal</label><input type="number" id="macdSig"  value="9"  min="2" max="100"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Momentum -->
-      <div class="strat-params" id="p-momentum">
-        <div class="f"><label class="fl">Lookback Period (days)</label><input type="number" id="momLookback" value="20" min="2" max="500"></div>
-        <div class="f"><label class="fl">Threshold (%)</label><input type="number" id="momThresh" value="0" min="-20" max="20" step="0.5"></div>
-      </div>
-
-      <!-- Mean Reversion -->
-      <div class="strat-params" id="p-mean_rev">
-        <div class="f"><label class="fl">Lookback Period (days)</label><input type="number" id="mrPeriod" value="20" min="5" max="200"></div>
-        <div class="f"><label class="fl">Entry Z-Score (↓ buy)</label><input type="number" id="mrEntry" value="-1.5" min="-4" max="-0.5" step="0.25"></div>
-        <div class="f"><label class="fl">Exit Z-Score (↑ sell)</label><input type="number" id="mrExit" value="0.5" min="0" max="4" step="0.25"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- PORTFOLIO CONFIG -->
   <div>
-    <div class="sh">03 · Config</div>
+    <div class="sh">02 · Config</div>
     <div class="pnl">
       <div class="f"><label class="fl">Date Range</label>
         <div class="two">
@@ -367,10 +374,11 @@ input[type="password"]{text-transform:none}
     </div>
   </div>
 
-  <button class="brun" id="runBtn">▶ RUN BACKTEST</button>
+  <button class="brun" id="runBtn">▶ ANALYSE STRATEGIES</button>
 
   <div class="note">
-    <strong>Strategies:</strong> MA Cross · RSI · Bollinger Bands · MACD · Momentum · Mean Reversion<br><br>
+    <strong>Data:</strong> Yahoo Finance (primary) with Stooq fallback. No API key required.<br><br>
+    Runs all 6 strategies on each ticker. Select one per asset in the ◑ Compare tab, then run the final backtest.
   </div>
 </aside>
 
@@ -392,6 +400,8 @@ input[type="password"]{text-transform:none}
       <button class="tab active" data-panel="portfolio">◈ Portfolio</button>
       <button class="tab" data-panel="signals">◎ Signals</button>
       <button class="tab" data-panel="stats">◻ Asset Stats</button>
+      <button class="tab" data-panel="compare">◑ Compare</button>
+      <button class="tab" data-panel="optimize">⊕ Optimize</button>
     </div>
     <div class="tpanels">
 
@@ -416,6 +426,22 @@ input[type="password"]{text-transform:none}
           <div class="ei">◻</div>
           <div class="ett">No statistics yet</div>
           <div class="eb">Run a backtest to view per-asset performance metrics, risk indicators, and comparison table.</div>
+        </div>
+      </div>
+
+      <div class="tpanel" id="panel-compare">
+        <div class="empty">
+          <div class="ei">◑</div>
+          <div class="ett">No comparison yet</div>
+          <div class="eb">Run a backtest to automatically compare all six strategies across your tickers and identify the best performer per asset.</div>
+        </div>
+      </div>
+
+      <div class="tpanel" id="panel-optimize">
+        <div class="empty">
+          <div class="ei">⊕</div>
+          <div class="ett">No optimization yet</div>
+          <div class="eb">Run a backtest with 2+ tickers to compute optimal portfolio weights using mean-variance optimization, minimum variance, and risk parity methods.</div>
         </div>
       </div>
 
@@ -445,18 +471,19 @@ input[type="password"]{text-transform:none}
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-//  EMBEDDED CONFIG
-// ═══════════════════════════════════════════════════════════════
-// const ALPHA_VANTAGE_API_KEY = '045D9ZD5OBORJZ8I';
-
-// ═══════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════
-let tickers   = [];
-let portChart = null;
-let sigChart  = null;
-let termLines = [];
-let expanded  = false;
+let tickers       = [];
+let portChart     = null;
+let sigChart      = null;
+let efChart       = null;
+let termLines     = [];
+let expanded      = false;
+let rawPriceCache      = {};  // {ticker: priceData[]}  — stored after each run
+let lastResults        = [];  // last backtest results for compare/optimize
+let selectedStrategies = {};  // {ticker: stratId}  — user selection per ticker
+let lastCmpData        = [];  // [{ticker, stratResults}]  — compare tab data
+let lastRunConfig      = {};  // {initCap, sh, sd, ed}  — config from last Analyse run
 
 // ═══════════════════════════════════════════════════════════════
 //  UTILITIES
@@ -470,7 +497,14 @@ const $m    = v => {
 };
 const fix   = (v,d=2) => +v.toFixed(d);
 const mean  = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
-const std   = arr => { const m=mean(arr); return Math.sqrt(arr.reduce((s,r)=>s+(r-m)**2,0)/arr.length); };
+// FIX: use sample variance (÷N-1) for unbiased estimation of population std.
+// This corrects a systematic underestimation of volatility/Sharpe denominators,
+// particularly important for short backtest windows.
+const std   = arr => {
+  if (arr.length < 2) return 0;
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((s,r)=>s+(r-m)**2,0) / (arr.length-1));
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  TERMINAL
@@ -511,34 +545,6 @@ function setSys(state, label) {
   document.getElementById('dot').className = 'dot '+state;
   document.getElementById('sysLbl').textContent = label;
 }
-
-// ═══════════════════════════════════════════════════════════════
-//  API KEY WATCH
-// ═══════════════════════════════════════════════════════════════
-const $kstat = document.getElementById('keyStatus');
-
-// function updateKeyStatus() {
-//  const hasKey = ALPHA_VANTAGE_API_KEY && ALPHA_VANTAGE_API_KEY !== 'REPLACE_WITH_YOUR_ALPHA_VANTAGE_KEY';
-//  if (!hasKey) {
-//    $kstat.className='key-status demo'; 
-//    $kstat.textContent='◑ demo mode — MSFT & IBM only';
-//  } else {
-//    $kstat.className='key-status ok'; 
-//    $kstat.textContent='✓ embedded key set';
-//  }
-// }
-//updateKeyStatus();
-
-// ═══════════════════════════════════════════════════════════════
-//  STRATEGY SWITCHER
-// ═══════════════════════════════════════════════════════════════
-function onStratChange() {
-  const v = document.getElementById('strategy').value;
-  document.querySelectorAll('.strat-params').forEach(el => el.classList.remove('active'));
-  const el = document.getElementById('p-'+v);
-  if (el) el.classList.add('active');
-}
-window.onStratChange = onStratChange;
 
 // ═══════════════════════════════════════════════════════════════
 //  TICKER MANAGEMENT
@@ -588,35 +594,16 @@ document.querySelector('.tbar').addEventListener('click', e => {
 //  DATA FETCHING
 // ═══════════════════════════════════════════════════════════════
 
-/** Alpha Vantage — TIME_SERIES_DAILY_ADJUSTED.
-    Returns CORS headers natively; no proxy needed. */
-async function fetchAlphaVantage(ticker, sd, ed) {
-  const key = ALPHA_VANTAGE_API_KEY || 'demo';
-  const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${ticker}&outputsize=full&apikey=${key}`;
-  let resp;
-  try { resp = await fetch(url, { signal: AbortSignal.timeout(18000) }); }
-  catch(e) { throw new Error('AV network error: '+e.message); }
-  if (!resp.ok) throw new Error('AV HTTP '+resp.status);
-  const json = await resp.json();
-
-  if (json['Note'])    throw new Error('AV rate limit: try again in 1 min');
-  if (json['Information']) throw new Error('AV: '+json['Information'].slice(0,80));
-  if (json['Error Message']) throw new Error('AV: invalid symbol');
-
-  const ts = json['Time Series (Daily)'];
-  if (!ts) throw new Error('AV: no time series in response');
-
-  const start = new Date(sd), end = new Date(ed);
-  const data = Object.entries(ts)
-    .filter(([d]) => { const dt=new Date(d); return dt>=start && dt<=end; })
-    .map(([d,v]) => ({ date:d, price: parseFloat(v['5. adjusted close'] || v['4. close']) }))
-    .sort((a,b) => a.date.localeCompare(b.date));
-
-  if (data.length < 10) throw new Error('AV: too few data points ('+data.length+')');
-  return { data, src:'alphavantage' };
+/** Fetch prices — Yahoo Finance primary, Stooq fallback. */
+async function fetchPrices(ticker, sd, ed) {
+  try { return await fetchYahoo(ticker, sd, ed); } catch(yahooErr) {
+    await tLog('WARN', `  ⚠ Yahoo failed for ${ticker}: ${yahooErr.message} — trying Stooq...`);
+    try { return await fetchStooq(ticker, sd, ed); } catch(stooqErr) {
+      throw new Error(`All sources failed — Yahoo(${yahooErr.message}) Stooq(${stooqErr.message})`);
+    }
+  }
 }
 
-/** CORS proxies for fallback sources */
 const PROXIES = [
   u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
   u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
@@ -680,32 +667,8 @@ async function fetchStooq(ticker, sd, ed) {
   throw new Error('stooq: no usable data');
 }
 
-async function fetchPrices(ticker, sd, ed) {
-  const fallback = document.getElementById('fallback')?.value || 'yahoo';
-  let avErr;
-  try { return await fetchAlphaVantage(ticker, sd, ed); }
-  catch(e) { avErr=e; }
 
-  if (fallback==='none') throw avErr;
 
-  await tLog('WARN', `  ⚠ AV failed for ${ticker}: ${avErr.message} — trying ${fallback}...`);
-
-  if (fallback==='yahoo') {
-    try { return await fetchYahoo(ticker, sd, ed); } catch(e) {
-      try { return await fetchStooq(ticker, sd, ed); } catch(e2) {
-        throw new Error(`All sources failed: AV(${avErr.message}) Yahoo(${e.message}) Stooq(${e2.message})`);
-      }
-    }
-  }
-  if (fallback==='stooq') {
-    try { return await fetchStooq(ticker, sd, ed); } catch(e) {
-      try { return await fetchYahoo(ticker, sd, ed); } catch(e2) {
-        throw new Error(`All sources failed: AV(${avErr.message}) Stooq(${e.message}) Yahoo(${e2.message})`);
-      }
-    }
-  }
-  throw avErr;
-}
 
 // ═══════════════════════════════════════════════════════════════
 //  MATH PRIMITIVES
@@ -724,6 +687,8 @@ function ema(arr, w) {
   return out;
 }
 
+// rollingStd uses population variance (÷N) intentionally:
+// Bollinger Bands convention universally uses population std.
 function rollingStd(arr, w) {
   return arr.map((_,i) => {
     const sl = arr.slice(Math.max(0,i-w+1),i+1);
@@ -755,12 +720,16 @@ function rsi(arr, period) {
 // ═══════════════════════════════════════════════════════════════
 //  STRATEGY ENGINE
 // ═══════════════════════════════════════════════════════════════
+
 function stratMACross(priceData, params) {
   const prices = priceData.map(d=>d.price);
   const mafn   = params.maType==='ema' ? ema : sma;
   const shortMA= mafn(prices, params.short);
   const longMA = mafn(prices, params.long);
-  const warmup = params.short;
+  // FIX: warmup must use params.long, not params.short.
+  // Previously this allowed crossover signals to fire before the long MA
+  // had accumulated sufficient data, producing spurious early trades.
+  const warmup = params.long;
   const signal = prices.map((_,i) => i<warmup ? 0 : (shortMA[i]>longMA[i] ? 1 : 0));
   const pos    = signal.map((s,i) => i===0?0:s-signal[i-1]);
   return priceData.map((d,i) => ({
@@ -871,43 +840,11 @@ function stratMeanRev(priceData, params) {
   }));
 }
 
-function getStrategyParams() {
-  const id = document.getElementById('strategy').value;
-  if (id==='ma_cross') return {
-    id, label:'MA Crossover',
-    maType:document.getElementById('maType').value,
-    short:+document.getElementById('maShort').value,
-    long:+document.getElementById('maLong').value
-  };
-  if (id==='rsi') return {
-    id, label:'RSI Threshold',
-    period:+document.getElementById('rsiPeriod').value,
-    os:+document.getElementById('rsiOS').value,
-    ob:+document.getElementById('rsiOB').value
-  };
-  if (id==='bbands') return {
-    id, label:'Bollinger Bands',
-    period:+document.getElementById('bbPeriod').value,
-    k:+document.getElementById('bbStd').value
-  };
-  if (id==='macd') return {
-    id, label:'MACD Signal',
-    fast:+document.getElementById('macdFast').value,
-    slow:+document.getElementById('macdSlow').value,
-    signal:+document.getElementById('macdSig').value
-  };
-  if (id==='momentum') return {
-    id, label:'Price Momentum',
-    lookback:+document.getElementById('momLookback').value,
-    threshold:+document.getElementById('momThresh').value
-  };
-  if (id==='mean_rev') return {
-    id, label:'Mean Reversion',
-    period:+document.getElementById('mrPeriod').value,
-    entry:+document.getElementById('mrEntry').value,
-    exit:+document.getElementById('mrExit').value
-  };
+/** Return default strategy params for a given strategy id. */
+function getStrategyParams(id) {
+  return ALL_STRAT_DEFAULTS.find(p => p.id === id) || ALL_STRAT_DEFAULTS[0];
 }
+
 
 function applyStrategy(priceData, params) {
   if (params.id==='ma_cross')  return stratMACross(priceData, params);
@@ -921,7 +858,7 @@ function applyStrategy(priceData, params) {
 
 // ═══════════════════════════════════════════════════════════════
 //  PORTFOLIO SIMULATION
-// ═══════════════════════════════════════════��═══════════════════
+// ═══════════════════════════════════════════════════════════════
 function computePortfolio(sigData, initCap, sharesN) {
   const shares  = sigData.map(d => sharesN * d.signal);
   const diff    = shares.map((s,i) => i===0 ? 0 : s-shares[i-1]);
@@ -963,8 +900,8 @@ function computeStats(data) {
   const m=mean(rets), sd_=std(rets);
   const vol=sd_*Math.sqrt(252);
   const sharpe=sd_>0?(m/sd_)*Math.sqrt(252):0;
-  const down=rets.filter(r=>r<0);
-  const dsd=down.length>0?Math.sqrt(down.reduce((s,r)=>s+r*r,0)/rets.length):0;
+  // Sortino: downside deviation uses total N (standard per Sortino 1994 with MAR=0)
+  const dsd=Math.sqrt(rets.reduce((s,r)=>s+(r<0?r*r:0),0)/Math.max(rets.length-1,1));
   const sortino=dsd>0?(m/dsd)*Math.sqrt(252):0;
   let peak=s,maxDD=0,ddTmp=0,ddLen=0;
   for(let i=1;i<totals.length;i++){
@@ -1002,7 +939,7 @@ function sparkline(vals, col) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  STAT BAR UPDATE
+//  STAT BAR
 // ═══════════════════════════════════════════════════════════════
 function updateStatBar(agg, totalSigs, stratLabel) {
   const tots=agg.map(d=>d.total);
@@ -1088,6 +1025,518 @@ function renderStats(results) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  STRATEGY COMPARISON ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+// Default parameters used for fair cross-strategy comparison.
+// These are canonical "out of the box" settings for each strategy.
+const ALL_STRAT_DEFAULTS = [
+  {id:'ma_cross',  label:'MA Cross EMA 30/90',  maType:'ema', short:30, long:90},
+  {id:'rsi',       label:'RSI 14 · 30/70',       period:14, os:30, ob:70},
+  {id:'bbands',    label:'BBands 20 · 2σ',        period:20, k:2},
+  {id:'macd',      label:'MACD 12/26/9',           fast:12, slow:26, signal:9},
+  {id:'momentum',  label:'Momentum 20d · 0%',     lookback:20, threshold:0},
+  {id:'mean_rev',  label:'Mean Rev 20d · -1.5σ',  period:20, entry:-1.5, exit:0.5}
+];
+
+function runAllStrategiesOnPrices(priceData, initCap, shares) {
+  return ALL_STRAT_DEFAULTS.map(params => {
+    try {
+      const sigData  = applyStrategy(priceData, params);
+      const portData = computePortfolio(sigData, initCap, shares);
+      const stats    = computeStats(portData);
+      return {params, stats, ok:true};
+    } catch(e) {
+      return {params, stats:null, ok:false, err:e.message};
+    }
+  });
+}
+
+/** Rebuild the compare panel from lastCmpData + selectedStrategies. */
+function renderComparison(initCap, shares) {
+  const panel = document.getElementById('panel-compare');
+  const cmpData = lastCmpData;
+
+  if (!cmpData.length) {
+    panel.innerHTML = `<div class="empty"><div class="ei">◑</div><div class="ett">No data yet</div>
+      <div class="eb">Click <strong style="color:var(--acc)">Analyse Strategies</strong> to fetch prices and compare all strategies.</div></div>`;
+    return;
+  }
+
+  const tickerTabs = cmpData.length > 1
+    ? `<div class="cmp-ticker-tabs" id="cmpTickerTabs">
+        ${cmpData.map((d,i) => `<button class="cmp-ttab ${i===0?'active':''}" data-cidx="${i}">${d.ticker}</button>`).join('')}
+       </div>` : '';
+
+  panel.innerHTML = `
+    <div class="cwrap">
+      <div class="cmph">
+        <span class="cmpttl">◑ strategy comparison</span>
+        <span class="cmpnote">default params · $${initCap.toLocaleString()} cap · ${shares} shs/sig · ★ best rank · click a row to select</span>
+      </div>
+      ${tickerTabs}
+      <div id="cmpTableWrap"></div>
+    </div>
+    <div class="cwrap">
+      <div class="cmph"><span class="cmpttl">⊞ metric guide</span></div>
+      <div class="def-grid">
+        <div><strong>Sharpe</strong> — annualised excess return ÷ total vol (rf=0). Penalises all volatility equally.</div>
+        <div><strong>Sortino</strong> — like Sharpe but only penalises downside vol. Better for skewed return distributions.</div>
+        <div><strong>Calmar</strong> — CAGR ÷ max drawdown. Reward per unit of worst observed loss.</div>
+        <div><strong>Win%</strong> — fraction of trading days with positive P&amp;L. High win rate alone is not sufficient.</div>
+        <div><strong>VaR 95%</strong> — worst daily return at the 5th percentile (historical simulation).</div>
+        <div><strong>Signals</strong> — total entry+exit events. Very low counts may indicate overfitting to the period.</div>
+      </div>
+    </div>
+    <div class="cmp-action-bar" id="cmpActionBar">
+      <div class="cmp-action-summary" id="cmpActionSummary"></div>
+      <button class="brun-sel" id="runFinalBtn" onclick="runFinalBacktest()">▶ RUN BACKTEST WITH SELECTIONS</button>
+    </div>`;
+
+  function updateActionSummary() {
+    const el = document.getElementById('cmpActionSummary');
+    if (!el) return;
+    const lines = Object.entries(selectedStrategies)
+      .map(([t, id]) => {
+        const p = getStrategyParams(id);
+        return `<strong>${t}</strong> → ${p.label}`;
+      }).join('&emsp;·&emsp;');
+    el.innerHTML = lines || '—';
+  }
+
+  const metrics = [
+    {key:'totalReturn', label:'Return', fmt:v=>pct(v),                  good:'max'},
+    {key:'cagr',        label:'CAGR',   fmt:v=>pct(v,1),                good:'max'},
+    {key:'sharpe',      label:'Sharpe', fmt:v=>v.toFixed(2),            good:'max'},
+    {key:'sortino',     label:'Sortino',fmt:v=>v.toFixed(2),            good:'max'},
+    {key:'maxDD',       label:'Max DD', fmt:v=>'-'+(v*100).toFixed(1)+'%', good:'min'},
+    {key:'calmar',      label:'Calmar', fmt:v=>v.toFixed(2),            good:'max'},
+    {key:'winRate',     label:'Win%',   fmt:v=>(v*100).toFixed(1)+'%',  good:'max'},
+    {key:'var95',       label:'VaR 95%',fmt:v=>pct(v),                  good:'max'},
+    {key:'vol',         label:'Ann Vol',fmt:v=>(v*100).toFixed(1)+'%',  good:'min'},
+  ];
+
+  function buildTable(cmpEntry) {
+    const {ticker, stratResults} = cmpEntry;
+    const valid = stratResults.filter(r => r.ok && r.stats);
+    if (!valid.length) {
+      document.getElementById('cmpTableWrap').innerHTML =
+        `<div class="note" style="padding:10px">No valid results for ${ticker}.</div>`;
+      updateActionSummary();
+      return;
+    }
+
+    const bests = {}, worsts = {};
+    metrics.forEach(m => {
+      const vals = valid.map(r => r.stats[m.key]);
+      bests[m.key]  = m.good==='max' ? Math.max(...vals) : Math.min(...vals);
+      worsts[m.key] = m.good==='max' ? Math.min(...vals) : Math.max(...vals);
+    });
+
+    const rankSums = valid.map(r => {
+      let sum = 0;
+      metrics.forEach(m => {
+        const sorted = [...valid].sort((a,b) =>
+          m.good==='max' ? b.stats[m.key]-a.stats[m.key] : a.stats[m.key]-b.stats[m.key]);
+        sum += sorted.findIndex(x => x===r);
+      });
+      return {r, sum};
+    });
+    const bestR = rankSums.reduce((b,c) => c.sum<b.sum ? c : b).r;
+    const selId = selectedStrategies[ticker] || bestR.params.id;
+
+    const rows = stratResults.map(r => {
+      if (!r.ok || !r.stats) {
+        return `<tr><td colspan="${metrics.length+2}" style="color:var(--dim);font-size:9px">${r.params.label} — failed</td></tr>`;
+      }
+      const isRec = r === bestR;
+      const isSel = r.params.id === selId;
+      const cells = metrics.map(m => {
+        const v = r.stats[m.key];
+        const isBest  = Math.abs(v - bests[m.key]) < 1e-9;
+        const isWorst = valid.length > 1 && Math.abs(v - worsts[m.key]) < 1e-9 && !isBest;
+        return `<td class="${isBest?'best':isWorst?'worst':''}">${m.fmt(v)}</td>`;
+      }).join('');
+      const badges = (isRec ? `<span class="badge-rec">★ BEST</span>` : '')
+                   + (isSel ? `<span class="badge-cur">SELECTED</span>` : '');
+      const selBtnCls = 'sel-btn' + (isSel ? ' sel-active' : '');
+      return `<tr class="${isSel?'sel-row':isRec?'rec-row':''}" data-strat="${r.params.id}" data-ticker="${ticker}" style="cursor:pointer">
+        <td>${r.params.label}${badges}</td>${cells}
+        <td class="cc">${r.stats.buys+r.stats.sells}</td>
+        <td><button class="${selBtnCls}" data-strat="${r.params.id}" data-ticker="${ticker}">${isSel?'✓ SELECTED':'SELECT'}</button></td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('cmpTableWrap').innerHTML = `
+      ${cmpData.length>1?`<div style="margin-bottom:7px;font-size:8px;color:var(--acc);letter-spacing:.1em">▶ ${ticker}</div>`:''} 
+      <div class="cmpwrap"><table class="sct">
+        <thead><tr>
+          <th style="text-align:left">STRATEGY</th>
+          ${metrics.map(m=>`<th>${m.label.toUpperCase()}</th>`).join('')}
+          <th>SIGS</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+
+    document.getElementById('cmpTableWrap').addEventListener('click', e => {
+      const btn = e.target.closest('.sel-btn');
+      const row = e.target.closest('tr[data-strat]');
+      const source = btn || row;
+      if (!source) return;
+      const stratId = source.dataset.strat;
+      const tkr     = source.dataset.ticker;
+      if (!stratId || !tkr) return;
+      selectedStrategies[tkr] = stratId;
+      buildTable(cmpEntry);
+      updateActionSummary();
+    });
+
+    updateActionSummary();
+  }
+
+  buildTable(cmpData[0]);
+  updateActionSummary();
+
+  if (cmpData.length > 1) {
+    document.getElementById('cmpTickerTabs').addEventListener('click', e => {
+      const btn = e.target.closest('.cmp-ttab'); if(!btn) return;
+      document.querySelectorAll('#cmpTickerTabs .cmp-ttab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      buildTable(cmpData[+btn.dataset.cidx]);
+    });
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  PORTFOLIO OPTIMIZATION ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+/** Project vector v onto the probability simplex {w: Σw=1, w≥0}.
+ *  Uses the O(n log n) algorithm from Duchi et al. (2008). */
+function projectSimplex(v) {
+  const n = v.length;
+  const s = [...v].sort((a,b)=>b-a);
+  let cumsum=0, k=0;
+  for (let i=0;i<n;i++) { cumsum+=s[i]; if(s[i]-(cumsum-1)/(i+1)>0) k=i; }
+  const theta=(s.slice(0,k+1).reduce((a,b)=>a+b,0)-1)/(k+1);
+  return v.map(x=>Math.max(x-theta,0));
+}
+
+/** Matrix-vector product M·v */
+function mvMul(M, v) {
+  return M.map(row=>row.reduce((s,x,j)=>s+x*v[j],0));
+}
+
+/** Build mean vector and sample covariance matrix from a T×N return matrix. */
+function buildCovMatrix(mat) {
+  const T=mat.length, N=mat[0].length;
+  const mu=new Array(N).fill(0).map((_,j)=>mat.reduce((s,r)=>s+r[j],0)/T);
+  const C=Array.from({length:N},()=>new Array(N).fill(0));
+  for (let r=0;r<T;r++)
+    for (let i=0;i<N;i++) for (let j=0;j<N;j++)
+      C[i][j]+=(mat[r][i]-mu[i])*(mat[r][j]-mu[j]);
+  const d=Math.max(T-1,1);
+  for (let i=0;i<N;i++) for (let j=0;j<N;j++) C[i][j]/=d;
+  return {mu, cov:C};
+}
+
+/** Extract aligned return matrix from backtest results.
+ *  Only dates present in ALL tickers are included (inner join). */
+function buildReturnMatrix(results) {
+  const allDates = results.map(r=>new Set(r.data.slice(1).map(d=>d.date)));
+  const common   = [...allDates[0]].filter(dt=>allDates.every(s=>s.has(dt))).sort();
+  const mat = common.map(dt =>
+    results.map(r => {
+      const d=r.data.find(x=>x.date===dt);
+      return d && isFinite(d.returns) ? d.returns : 0;
+    })
+  );
+  return {mat, tickers:results.map(r=>r.ticker), nDays:common.length};
+}
+
+/** Max Sharpe (rf=0) via parametric mean-variance frontier sweep.
+ *  Minimises (w'Σw - (1/λ)·w'μ) for a dense log-scale grid of λ values,
+ *  then returns the weights that achieved the highest Sharpe ratio.
+ *  More robust than gradient ascent directly on Sharpe, which is not
+ *  globally concave on the simplex and collapses to corner solutions. */
+function optMaxSharpe(mu, cov) {
+  const n = mu.length;
+  if (n === 1) return [1];
+  const lambdas = Array.from({length:300}, (_,i) => Math.pow(10, -2 + 7*(i/299)));
+  let bestSharpe = -Infinity, bestW = new Array(n).fill(1/n);
+  for (const lam of lambdas) {
+    let w = new Array(n).fill(1/n), lr = 0.05;
+    for (let it = 0; it < 3000; it++) {
+      const Sw = mvMul(cov, w);
+      const grad = mu.map((mi,i) => -(mi/lam) + 2*Sw[i]);
+      if (it > 0 && it % 1000 === 0) lr *= 0.5;
+      const wNew = projectSimplex(w.map((wi,i) => wi - lr*grad[i]));
+      const diff = wNew.reduce((s,wi,i) => s + Math.abs(wi-w[i]), 0);
+      w = wNew; if (diff < 1e-10) break;
+    }
+    const Sw = mvMul(cov, w);
+    const ret = w.reduce((s,wi,i) => s + wi*mu[i], 0);
+    const vol = Math.sqrt(Math.max(w.reduce((s,wi,i) => s + wi*Sw[i], 0), 0));
+    const sharpe = vol > 1e-10 ? ret/vol : -Infinity;
+    if (isFinite(sharpe) && sharpe > bestSharpe) { bestSharpe = sharpe; bestW = [...w]; }
+  }
+  return bestW;
+}
+
+/** Min Variance via projected gradient descent. ∇σ²=2Σw. */
+function optMinVariance(cov) {
+  const n=cov.length;
+  if (n===1) return [1];
+  let w=new Array(n).fill(1/n), lr=0.1;
+  for (let iter=0;iter<6000;iter++) {
+    const Sw=mvMul(cov,w);
+    if (iter>0 && iter%1500===0) lr*=0.5;
+    const wNew=projectSimplex(w.map((wi,i)=>wi-lr*2*Sw[i]));
+    const diff=wNew.reduce((s,wi,i)=>s+Math.abs(wi-w[i]),0);
+    w=wNew; if(diff<1e-10) break;
+  }
+  return w;
+}
+
+/** Risk Parity: iteratively scale weights so each asset contributes
+ *  equally to total portfolio variance.  Uses Maillard et al. (2010). */
+function optRiskParity(cov) {
+  const n=cov.length;
+  if (n===1) return [1];
+  let w=new Array(n).fill(1/n);
+  for (let iter=0;iter<3000;iter++) {
+    const Sw=mvMul(cov,w);
+    const pv=w.reduce((s,wi,i)=>s+wi*Sw[i],0);
+    if (pv<=0) break;
+    const newW=w.map((wi,i)=>{
+      const rc=wi*Sw[i]/Math.max(pv,1e-14);
+      return wi*(1/n)/Math.max(rc,1e-12);
+    });
+    const sumW=newW.reduce((a,b)=>a+b,0);
+    const wNew=newW.map(wi=>wi/sumW);
+    const diff=wNew.reduce((s,wi,i)=>s+Math.abs(wi-w[i]),0);
+    w=wNew; if(diff<1e-10) break;
+  }
+  return w;
+}
+
+/** Compute annualised portfolio metrics given weights, mean, and cov. */
+function portMetrics(w, muAnn, covAnn) {
+  const Sw=mvMul(covAnn,w);
+  const ret=w.reduce((s,wi,i)=>s+wi*muAnn[i],0);
+  const vari=w.reduce((s,wi,i)=>s+wi*Sw[i],0);
+  const vol=Math.sqrt(Math.max(vari,0));
+  const sharpe=vol>0?ret/vol:0;
+  const wAvgVol=w.reduce((s,wi,i)=>s+wi*Math.sqrt(Math.max(covAnn[i][i],0)),0);
+  const divR=vol>0?wAvgVol/vol:1;
+  return {ret,vol,sharpe,divR};
+}
+
+/** Trace the efficient frontier by minimising (w'Σw - λ·w'μ) for varying λ.
+ *  This is the parametric mean-variance utility approach. */
+function efficientFrontier(muAnn, covAnn, nPts=50) {
+  // Sweep λ (risk-aversion) on a log scale from very low to very high
+  const lambdas=Array.from({length:nPts},(_,i)=>Math.pow(10,-1+5*(i/(nPts-1))));
+  const n=muAnn.length;
+  const pts=lambdas.map(lam=>{
+    let w=new Array(n).fill(1/n), lr=0.05;
+    for (let it=0;it<4000;it++) {
+      const Sw=mvMul(covAnn,w);
+      // gradient of (σ² - (1/λ)·μ'w) w.r.t w: 2Σw - (1/λ)·μ
+      const grad=muAnn.map((mi,i)=>-(mi/lam)+2*Sw[i]);
+      if(it>0&&it%1000===0) lr*=0.5;
+      const wNew=projectSimplex(w.map((wi,i)=>wi-lr*grad[i]));
+      const diff=wNew.reduce((s,wi,i)=>s+Math.abs(wi-w[i]),0);
+      w=wNew; if(diff<1e-10) break;
+    }
+    const m=portMetrics(w,muAnn,covAnn);
+    return {x:m.vol*100,y:m.ret*100};
+  });
+  // Remove duplicates and sort by vol
+  return pts.sort((a,b)=>a.x-b.x).filter((p,i,arr)=>i===0||Math.abs(p.x-arr[i-1].x)>0.001);
+}
+
+const WCOLORS = ['#E09000','#15B882','#3A8CEE','#8060E4','#EE3348','#00BED0','#DEBA20','#15B882'];
+
+function renderOptimization(results) {
+  const panel = document.getElementById('panel-optimize');
+
+  if (results.length < 2) {
+    panel.innerHTML = `
+      <div class="empty">
+        <div class="ei">⊕</div>
+        <div class="ett">2+ tickers required</div>
+        <div class="eb">Add at least 2 tickers and re-run the backtest to enable portfolio weight optimization.</div>
+      </div>`;
+    return;
+  }
+
+  const {mat, tickers: tkrs, nDays} = buildReturnMatrix(results);
+  if (nDays < 30) {
+    panel.innerHTML=`<div class="empty"><div class="ei">⊕</div><div class="ett">Insufficient overlap</div>
+      <div class="eb">Need ≥30 overlapping trading days. Extend the date range or check that all tickers have data for the period.</div></div>`;
+    return;
+  }
+
+  const {mu, cov} = buildCovMatrix(mat);
+  const muAnn  = mu.map(m=>m*252);
+  const covAnn = cov.map(row=>row.map(v=>v*252));
+  const N = tkrs.length;
+
+  const equalW  = new Array(N).fill(1/N);
+  const maxShrW = optMaxSharpe(muAnn, covAnn);
+  const minVarW = optMinVariance(covAnn);
+  const riskParW= optRiskParity(covAnn);
+
+  const methods = [
+    {name:'Equal Weight', desc:'1/N baseline', key:'eq', w:equalW,   col:'#627898'},
+    {name:'Max Sharpe',   desc:'highest risk-adj return', key:'ms', w:maxShrW,  col:'#15B882'},
+    {name:'Min Variance', desc:'lowest portfolio vol', key:'mv', w:minVarW,  col:'#3A8CEE'},
+    {name:'Risk Parity',  desc:'equal risk contribution', key:'rp', w:riskParW, col:'#8060E4'},
+  ];
+
+  const methMetrics = methods.map(m=>({...m,...portMetrics(m.w,muAnn,covAnn)}));
+  const bestSharpe  = Math.max(...methMetrics.map(m=>m.sharpe));
+
+  // Method cards
+  const cards = methMetrics.map(m=>{
+    const isBest = Math.abs(m.sharpe-bestSharpe)<1e-6;
+    const bars = tkrs.map((tk,i)=>`
+      <div class="wbar-row">
+        <div class="wbar-label" title="${tk}">${tk}</div>
+        <div class="wbar-track">
+          <div class="wbar-fill" style="width:${(m.w[i]*100).toFixed(1)}%;background:${WCOLORS[i%WCOLORS.length]}"></div>
+        </div>
+        <div class="wbar-val">${(m.w[i]*100).toFixed(1)}%</div>
+      </div>`).join('');
+
+    const shCls = m.sharpe>=1?'pos':m.sharpe<0?'neg':'dim';
+    return `<div class="ocard ${isBest?'best-card':''}">
+      <div class="ocard-head">
+        <div>
+          <div class="ocard-name">${m.name}${isBest?' ★':''}</div>
+          <div class="ocard-sub">${m.desc}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="osharpe ${shCls}">${m.sharpe.toFixed(2)}</div>
+          <div class="ocard-sub">sharpe</div>
+        </div>
+      </div>
+      <div class="wbar-wrap">${bars}</div>
+      <div class="omet-grid">
+        <div><div class="omet-l">Ann Return</div><div class="omet-v ${m.ret>=0?'pos':'neg'}">${(m.ret*100).toFixed(1)}%</div></div>
+        <div><div class="omet-l">Ann Vol</div><div class="omet-v">${(m.vol*100).toFixed(1)}%</div></div>
+        <div><div class="omet-l">Div Ratio</div><div class="omet-v acc">${m.divR.toFixed(2)}x</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Pearson correlation matrix
+  const corrRows = tkrs.map((ti,i)=>{
+    const cells = tkrs.map((tj,j)=>{
+      const c = cov[i][j]/Math.max(Math.sqrt(cov[i][i]*cov[j][j]),1e-14);
+      const alpha = Math.abs(c)*0.65;
+      const bg = c>=0 ? `rgba(21,184,130,${alpha.toFixed(2)})` : `rgba(238,51,72,${alpha.toFixed(2)})`;
+      return `<td class="corr-cell" style="background:${bg}">${c.toFixed(2)}</td>`;
+    }).join('');
+    return `<tr><td style="font-weight:700;color:var(--acc);padding:5px 9px">${ti}</td>${cells}</tr>`;
+  }).join('');
+  const corrHeaders=tkrs.map(t=>`<th style="text-align:center">${t}</th>`).join('');
+
+  // Efficient frontier data
+  const efPts = efficientFrontier(muAnn, covAnn);
+  const efCanvasId = 'efCanvas_'+Date.now();
+
+  panel.innerHTML = `
+    <div class="cwrap">
+      <div class="cmph">
+        <span class="cmpttl">⊕ portfolio weight optimization</span>
+        <span class="cmpnote">annualised · long-only (w≥0) · rf=0 · ${nDays} overlapping days</span>
+      </div>
+      <div class="opt-methods">${cards}</div>
+    </div>
+
+    <div class="opt-2col">
+      <div class="cwrap">
+        <div class="cmph">
+          <span class="cmpttl">⟳ pearson correlation</span>
+          <span class="cmpnote">sample · strategy returns</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="cmpt" style="font-size:9px">
+            <thead><tr><th></th>${corrHeaders}</tr></thead>
+            <tbody>${corrRows}</tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="cwrap">
+        <div class="cmph">
+          <span class="cmpttl">◌ efficient frontier</span>
+          <span class="cmpnote">parametric mean-variance · long-only constraint</span>
+        </div>
+        <canvas id="${efCanvasId}" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="cwrap">
+      <div class="cmph"><span class="cmpttl">⚑ interpretation &amp; caveats</span></div>
+      <div class="caveat-grid">
+        <div><strong>Look-ahead bias</strong> — weights are computed from the full backtest window. In live trading, only past data is available. Use walk-forward validation for realistic estimates.</div>
+        <div><strong>Estimation error</strong> — mean returns are notoriously noisy; covariance is more stable. Min Variance and Risk Parity are more robust to estimation error than Max Sharpe.</div>
+        <div><strong>Concentration risk</strong> — Max Sharpe often produces highly concentrated portfolios. Check that the weights align with your risk tolerance before use.</div>
+        <div><strong>Long-only constraint</strong> — all optimizers enforce w_i ≥ 0 via Duchi simplex projection. No short selling or leverage is assumed.</div>
+        <div><strong>Diversification ratio</strong> — weighted average individual vol ÷ portfolio vol. Values &gt;1 indicate genuine diversification benefit.</div>
+        <div><strong>Strategy-level returns</strong> — the covariance is computed from simulated strategy P&amp;L returns, not raw buy-and-hold prices. Results depend on the selected strategy and its parameters.</div>
+      </div>
+    </div>`;
+
+  // Draw efficient frontier chart
+  const efCtx = document.getElementById(efCanvasId);
+  if (efCtx && efPts.length > 1) {
+    if (efChart) { efChart.destroy(); efChart=null; }
+    efChart = new Chart(efCtx, {
+      type:'scatter',
+      data:{datasets:[
+        {label:'Efficient Frontier',data:efPts,borderColor:'rgba(224,144,0,.7)',
+         backgroundColor:'rgba(224,144,0,.06)',showLine:true,fill:true,
+         pointRadius:0,borderWidth:2,tension:0.3,order:5},
+        ...methMetrics.map((m,i)=>({
+          label:m.name,
+          data:[{x:m.vol*100,y:m.ret*100}],
+          borderColor:m.col,backgroundColor:m.col,
+          pointRadius:8,pointStyle:'circle',showLine:false,order:i
+        })),
+        ...tkrs.map((tk,i)=>({
+          label:tk+' (asset)',
+          data:[{x:Math.sqrt(Math.max(covAnn[i][i],0))*100,y:muAnn[i]*100}],
+          borderColor:'#2A3A52',backgroundColor:'#2A3A52',
+          pointRadius:5,pointStyle:'crossRot',showLine:false,order:10+i
+        }))
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:true,
+        plugins:{
+          legend:{display:true,labels:{color:TICK,font:{family:MONO,size:8},boxWidth:10,padding:7,
+            filter:item=>item.datasetIndex<methMetrics.length+1}},
+          tooltip:{...TT,callbacks:{label:ctx=>{
+            const d=ctx.parsed;
+            return ` ${ctx.dataset.label}: vol=${d.x.toFixed(1)}%  ret=${d.y.toFixed(1)}%`;
+          }}}
+        },
+        scales:{
+          x:{title:{display:true,text:'Ann Volatility (%)',color:TICK,font:{family:MONO,size:8}},
+             ticks:{color:TICK,font:{family:MONO,size:8}},grid:{color:GRID}},
+          y:{title:{display:true,text:'Ann Return (%)',color:TICK,font:{family:MONO,size:8}},
+             ticks:{color:TICK,font:{family:MONO,size:8}},grid:{color:GRID}}
+        }
+      }
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  CHART HELPERS
 // ═══════════════════════════════════════════════════════════════
 const MONO='\'JetBrains Mono\',monospace';
@@ -1101,116 +1550,176 @@ const sc=(yFn)=>({
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  MAIN RUN
+//  STEP 1 — ANALYSE: fetch prices + compare all strategies
 // ═══════════════════════════════════════════════════════════════
 document.getElementById('runBtn').addEventListener('click', async () => {
   if (!tickers.length) { await tLog('WARN','⚠ Add at least one ticker first.'); return; }
 
-  const sd     = document.getElementById('startDate').value;
-  const ed     = document.getElementById('endDate').value;
-  const initCap= +document.getElementById('initCap').value;
-  const sh     = +document.getElementById('shares').value;
-  const params = getStrategyParams();
+  const sd      = document.getElementById('startDate').value;
+  const ed      = document.getElementById('endDate').value;
+  const initCap = +document.getElementById('initCap').value;
+  const sh      = +document.getElementById('shares').value;
 
-  if (params.id==='ma_cross' && params.short>=params.long) {
-    await tLog('WARN','⚠ Short MA window must be less than long window.'); return;
-  }
-  if (params.id==='macd' && params.fast>=params.slow) {
-    await tLog('WARN','⚠ MACD fast period must be less than slow period.'); return;
-  }
-  if (new Date(sd)>=new Date(ed)) {
+  if (new Date(sd) >= new Date(ed)) {
     await tLog('WARN','⚠ Start date must be before end date.'); return;
   }
 
-  document.getElementById('runBtn').disabled=true;
+  document.getElementById('runBtn').disabled = true;
   setSys('running','RUNNING');
 
-  termLines=[];
+  termLines = [];
   await tLog('INIT','═'.repeat(52));
   await tLog('INIT','  QuantBT  ·  Quantitative Strategy Backtester',16);
   await tLog('INIT','═'.repeat(52),16);
-  await tLog('INIT',`  Strategy : ${params.label}`,20);
   await tLog('INIT',`  Tickers  : ${tickers.join(', ')}  (${tickers.length} asset${tickers.length>1?'s':''})`,16);
   await tLog('INIT',`  Period   : ${sd}  →  ${ed}`,16);
   await tLog('INIT',`  Capital  : ${$m(initCap)} per stock  ·  ${sh} shares/signal`,16);
-  if (params.id==='ma_cross') await tLog('INIT',`  Params   : ${params.maType.toUpperCase()} ${params.short}d / ${params.long}d`,16);
-  if (params.id==='rsi')      await tLog('INIT',`  Params   : period=${params.period}  oversold=${params.os}  overbought=${params.ob}`,16);
-  if (params.id==='bbands')   await tLog('INIT',`  Params   : period=${params.period}  k=${params.k}σ`,16);
-  if (params.id==='macd')     await tLog('INIT',`  Params   : fast=${params.fast}  slow=${params.slow}  signal=${params.signal}`,16);
-  if (params.id==='momentum') await tLog('INIT',`  Params   : lookback=${params.lookback}d  threshold=${params.threshold}%`,16);
-  if (params.id==='mean_rev') await tLog('INIT',`  Params   : period=${params.period}d  entry z=${params.entry}  exit z=${params.exit}`,16);
   await tLog('DATA','─'.repeat(52),26);
   await tLog('DATA','  Fetching price histories...',16);
 
-  const results=[]; const failed=[];
+  const failed = [];
+  rawPriceCache = {};
+  selectedStrategies = {};
+  lastRunConfig = { sd, ed, initCap, sh };
 
-  for (let i=0;i<tickers.length;i++) {
-    const sym=tickers[i];
+  for (let i = 0; i < tickers.length; i++) {
+    const sym = tickers[i];
     await tLog('DATA',`  → ${sym}: requesting data...`,30);
-    let fetchedData, fetchSrc;
     try {
-      ({data:fetchedData,src:fetchSrc}=await fetchPrices(sym,sd,ed));
-      await tLog('DATA',`  ✓ ${sym}: ${fetchedData.length} trading days  [${fetchSrc}]`);
+      const { data: fd, src } = await fetchPrices(sym, sd, ed);
+      rawPriceCache[sym] = fd;
+      await tLog('DATA',`  ✓ ${sym}: ${fd.length} trading days  [${src}]`);
     } catch(e) {
       await tLog('ERR ',`  ✗ ${sym}: ${e.message}`);
       failed.push(sym); await sleep(200); continue;
     }
+  }
 
-    await tLog('CALC',`  → ${sym}: computing ${params.label} signals...`,24);
-    const sigData=applyStrategy(fetchedData, params);
-    const buys=sigData.filter(d=>d.position>.5).length;
-    const sells=sigData.filter(d=>d.position<-.5).length;
-    await tLog('CALC',`  ✓ ${sym}: ${buys+sells} signal events  (${buys}↑ buy  /  ${sells}↓ sell)`,14);
+  const fetchedTickers = tickers.filter(t => rawPriceCache[t]);
+  if (!fetchedTickers.length) {
+    await tLog('ERR ','  ✗ No data retrieved. Check tickers and retry.');
+    setSys('error','FAILED');
+    document.getElementById('runBtn').disabled = false; return;
+  }
 
-    await tLog('PORT',`  → ${sym}: simulating portfolio...`,22);
-    const portData=computePortfolio(sigData,initCap,sh);
-    const ps=portData[0].total, pe=portData[portData.length-1].total;
-    const stats=computeStats(portData);
-    await tLog('PORT',`  ✓ ${sym}: ${$m(ps)} → ${$m(pe)}  (${(pe/ps).toFixed(2)}x)  Sharpe=${stats.sharpe.toFixed(2)}  MaxDD=-${(stats.maxDD*100).toFixed(1)}%`,14);
+  await tLog('CMP ','─'.repeat(52),20);
+  await tLog('CMP ','  Running all 6 strategies on each ticker...',14);
 
-    results.push({ticker:sym, data:portData, sigData, stats});
-    await sleep(160);
+  // Build cmpData and auto-select best composite strategy per ticker
+  lastCmpData = fetchedTickers.map(ticker => {
+    const stratResults = runAllStrategiesOnPrices(rawPriceCache[ticker], initCap, sh);
+    const valid = stratResults.filter(r => r.ok && r.stats);
+    let bestId = stratResults[0].params.id;
+    if (valid.length) {
+      const mkeys  = ['totalReturn','cagr','sharpe','sortino','maxDD','calmar','winRate','var95','vol'];
+      const minSet = new Set(['maxDD','vol']);
+      const rankSums = valid.map(r => {
+        let sum = 0;
+        mkeys.forEach(k => {
+          const good = minSet.has(k) ? 'min' : 'max';
+          const sorted = [...valid].sort((a,b) => good==='max' ? b.stats[k]-a.stats[k] : a.stats[k]-b.stats[k]);
+          sum += sorted.findIndex(x => x === r);
+        });
+        return { r, sum };
+      });
+      bestId = rankSums.reduce((b,c) => c.sum < b.sum ? c : b).r.params.id;
+    }
+    selectedStrategies[ticker] = bestId;
+    return { ticker, stratResults };
+  });
+
+  if (failed.length) await tLog('WARN',`  ⚠ Failed tickers: ${failed.join(', ')}`,16);
+  await tLog('CMP ',`  ✓ Done — review strategies in ◑ Compare, then click ▶ Run Backtest with Selections`,14);
+
+  renderComparison(initCap, sh);
+
+  // Auto-switch to Compare tab
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tpanel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.tab[data-panel="compare"]').classList.add('active');
+  document.getElementById('panel-compare').classList.add('active');
+
+  setSys('ready','SELECT STRATEGY');
+  document.getElementById('runBtn').disabled = false;
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  STEP 2 — BACKTEST: run final sim with per-ticker selections
+// ═══════════════════════════════════════════════════════════════
+async function runFinalBacktest() {
+  if (!Object.keys(rawPriceCache).length) {
+    await tLog('WARN','⚠ Run Analyse Strategies first.'); return;
+  }
+  const { sd, ed, initCap, sh } = lastRunConfig;
+  const btn = document.getElementById('runFinalBtn');
+  if (btn) btn.disabled = true;
+  document.getElementById('runBtn').disabled = true;
+  setSys('running','RUNNING');
+
+  termLines = [];
+  await tLog('INIT','═'.repeat(52));
+  await tLog('INIT','  QuantBT  ·  Final Backtest',16);
+  await tLog('INIT','═'.repeat(52),16);
+  await tLog('INIT',`  Period   : ${sd}  →  ${ed}`,16);
+  await tLog('INIT',`  Capital  : ${$m(initCap)} per stock  ·  ${sh} shares/signal`,16);
+
+  const results = [];
+
+  for (const sym of Object.keys(rawPriceCache)) {
+    const stratId = selectedStrategies[sym] || 'ma_cross';
+    const params  = getStrategyParams(stratId);
+    await tLog('CALC',`  → ${sym}: ${params.label}`,18);
+    const sigData  = applyStrategy(rawPriceCache[sym], params);
+    const portData = computePortfolio(sigData, initCap, sh);
+    const stats    = computeStats(portData);
+    const ps = portData[0].total, pe = portData[portData.length-1].total;
+    await tLog('PORT',`  ✓ ${sym}: ${$m(ps)} → ${$m(pe)}  Sharpe=${stats.sharpe.toFixed(2)}  MaxDD=-${(stats.maxDD*100).toFixed(1)}%`,14);
+    results.push({ ticker:sym, data:portData, sigData, stats, params });
+    await sleep(80);
   }
 
   if (!results.length) {
-    await tLog('ERR ','  ✗ No data retrieved. Check tickers / API key and retry.');
+    await tLog('ERR ','  ✗ No results.');
     setSys('error','FAILED');
-    document.getElementById('runBtn').disabled=false; return;
+    document.getElementById('runBtn').disabled = false;
+    if (btn) btn.disabled = false; return;
   }
 
+  // Aggregate
   await tLog('AGG ','─'.repeat(52),26);
-  await tLog('AGG ',`  Aggregating ${results.length} portfolio${results.length>1?'s':''} by date...`,16);
-  const agg=aggregatePortfolio(results);
-  const totalSigs=results.reduce((s,r)=>s+r.stats.buys+r.stats.sells,0);
-  await tLog('AGG ',`  ✓ ${agg.length} aggregate trading days  ·  ${totalSigs} total signal events`,14);
-
-  const at=agg.map(d=>d.total);
-  const ar=agg.map(d=>d.returns).slice(1).filter(r=>isFinite(r));
-  const am=mean(ar), as2=std(ar);
-  const asharpe=as2>0?(am/as2)*Math.sqrt(252):0;
-  let ap=at[0],add2=0; at.forEach(t=>{if(t>ap)ap=t;const dd=(ap-t)/ap;if(dd>add2)add2=dd;});
+  const agg = aggregatePortfolio(results);
+  const totalSigs = results.reduce((s,r) => s + r.stats.buys + r.stats.sells, 0);
+  const at = agg.map(d => d.total);
+  const ar = agg.map(d => d.returns).slice(1).filter(r => isFinite(r));
+  const asharpe = std(ar) > 0 ? (mean(ar)/std(ar))*Math.sqrt(252) : 0;
+  let ap = at[0], add2 = 0;
+  at.forEach(t => { if(t>ap) ap=t; const dd=(ap-t)/ap; if(dd>add2) add2=dd; });
 
   await tLog('DONE','═'.repeat(52),30);
   await tLog('DONE',`  TOTAL RETURN   ${(at[at.length-1]/at[0]).toFixed(2)}x  (${pct(at[at.length-1]/at[0]-1)})`,16);
-  await tLog('DONE',`  SHARPE RATIO   ${asharpe.toFixed(2)}  (annualised, rf=0)`,16);
+  await tLog('DONE',`  SHARPE RATIO   ${asharpe.toFixed(2)}  (annualised, rf=0, sample std)`,16);
   await tLog('DONE',`  MAX DRAWDOWN  -${(add2*100).toFixed(1)}%`,16);
   await tLog('DONE',`  SIGNALS        ${totalSigs} events across ${results.length} ticker${results.length>1?'s':''}`,16);
-  if (failed.length) await tLog('WARN',`  ⚠ Failed tickers: ${failed.join(', ')}`,16);
   await tLog('DONE','═'.repeat(52),16);
 
-  updateStatBar(agg, totalSigs, params.label);
+  const stratLabel = results.length === 1
+    ? results[0].params.label
+    : results.map(r => r.ticker+':'+r.params.label.split(' ')[0]).join('  ');
 
+  updateStatBar(agg, totalSigs, stratLabel);
+
+  // ── Portfolio tab ──
   document.getElementById('panel-portfolio').innerHTML = `
     <div class="cwrap">
       <div class="chdr">
         <span class="cttl">◈ aggregate portfolio value</span>
-        <span style="font-size:9px;color:var(--mute)">${results.length} asset${results.length>1?'s':''} · ${agg.length} days · ${params.label}</span>
+        <span style="font-size:9px;color:var(--mute)">${results.length} asset${results.length>1?'s':''} · ${agg.length} days</span>
       </div>
       <canvas id="portCanvas" height="255"></canvas>
     </div>`;
 
-  if (portChart){portChart.destroy();portChart=null;}
-  portChart=new Chart(document.getElementById('portCanvas'),{
+  if (portChart) { portChart.destroy(); portChart = null; }
+  portChart = new Chart(document.getElementById('portCanvas'), {
     type:'line',
     data:{
       labels:agg.map(d=>d.date),
@@ -1219,8 +1728,7 @@ document.getElementById('runBtn').addEventListener('click', async () => {
           borderColor:'#E09000',backgroundColor:'rgba(224,144,0,.06)',
           borderWidth:2,fill:true,pointRadius:0,tension:.1},
         {label:'Initial Capital',data:agg.map(()=>agg[0].total),
-          borderColor:'#182838',borderWidth:1,borderDash:[5,4],
-          pointRadius:0,fill:false}
+          borderColor:'#182838',borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false}
       ]
     },
     options:{responsive:true,maintainAspectRatio:true,
@@ -1233,38 +1741,38 @@ document.getElementById('runBtn').addEventListener('click', async () => {
     }
   });
 
-  const tabs=results.map((r,i)=>`<button class="ttab ${i===0?'active':''}" data-idx="${i}">${r.ticker}</button>`).join('');
+  // ── Signals tab ──
+  const sigTabBtns = results.map((r,i) =>
+    `<button class="ttab ${i===0?'active':''}" data-idx="${i}">${r.ticker}</button>`).join('');
   document.getElementById('panel-signals').innerHTML = `
     <div class="cwrap">
       <div class="chdr">
-        <span class="cttl">◎ price · ${params.label} · signals</span>
-        <div class="ttabs" id="sigTabs">${tabs}</div>
+        <span class="cttl">◎ price · signals</span>
+        <div class="ttabs" id="sigTabs">${sigTabBtns}</div>
       </div>
       <canvas id="sigCanvas" height="255"></canvas>
     </div>`;
 
   function drawSig(r) {
-    if (sigChart){sigChart.destroy();sigChart=null;}
-    const data=r.sigData;
-    const hasInd2=data[0].ind2!==null && params.id!=='rsi' && params.id!=='momentum' && params.id!=='mean_rev';
-
-    const datasets=[
+    if (sigChart) { sigChart.destroy(); sigChart = null; }
+    const data = r.sigData, pid = r.params.id;
+    const hasInd2 = data[0].ind2 !== null && !['rsi','momentum','mean_rev'].includes(pid);
+    const datasets = [
       {label:'Price',data:data.map(d=>d.price),borderColor:'#C4D4EE',
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:5,yAxisID:'y'},
     ];
-
-    if (params.id==='rsi') {
+    if (pid==='rsi') {
       datasets.push({label:data[0].ind1Name,data:data.map(d=>d.ind1),borderColor:'#8060E4',
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y2'});
-    } else if (params.id==='macd') {
+    } else if (pid==='macd') {
       datasets.push({label:'MACD',data:data.map(d=>d.ind1),borderColor:'#3A8CEE',
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y2'});
       datasets.push({label:data[0].ind2Name,data:data.map(d=>d.ind2),borderColor:'#EE3348',
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:3,yAxisID:'y2'});
-    } else if (params.id==='momentum') {
+    } else if (pid==='momentum') {
       datasets.push({label:data[0].ind1Name,data:data.map(d=>d.ind1),borderColor:'#00BED0',
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y2'});
-    } else if (params.id==='mean_rev') {
+    } else if (pid==='mean_rev') {
       datasets.push({label:data[0].ind2Name,data:data.map(d=>d.ind2),borderColor:'#3A8CEE',
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y'});
       datasets.push({label:data[0].ind1Name+'(rhs)',data:data.map(d=>d.ind1),borderColor:'#8060E4',
@@ -1274,27 +1782,24 @@ document.getElementById('runBtn').addEventListener('click', async () => {
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:4,yAxisID:'y'});
       if (hasInd2) datasets.push({label:data[0].ind2Name,data:data.map(d=>d.ind2),borderColor:'#8060E4',
         borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:3,yAxisID:'y'});
-      if (params.id==='bbands') datasets.push({label:'BB Mid',data:data.map(d=>d.ind3),borderColor:'#627898',
+      if (pid==='bbands') datasets.push({label:'BB Mid',data:data.map(d=>d.ind3),borderColor:'#627898',
         borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false,tension:0,order:2,yAxisID:'y'});
     }
-
     datasets.push({label:'Buy ▲',data:data.map(d=>d.position>.5?d.price:null),
-      type:'line',showLine:false,spanGaps:false,
-      borderColor:'#15B882',backgroundColor:'#15B882',
+      type:'line',showLine:false,spanGaps:false,borderColor:'#15B882',backgroundColor:'#15B882',
       pointRadius:7,pointStyle:'triangle',order:1,yAxisID:'y'});
     datasets.push({label:'Sell ▼',data:data.map(d=>d.position<-.5?d.price:null),
-      type:'line',showLine:false,spanGaps:false,
-      borderColor:'#EE3348',backgroundColor:'#EE3348',
+      type:'line',showLine:false,spanGaps:false,borderColor:'#EE3348',backgroundColor:'#EE3348',
       pointRadius:7,pointStyle:'triangle',pointRotation:180,order:0,yAxisID:'y'});
 
-    const useY2 = ['rsi','macd','momentum','mean_rev'].includes(params.id);
+    const useY2 = ['rsi','macd','momentum','mean_rev'].includes(pid);
     const scales2 = useY2 ? {
-      y: {ticks:{color:TICK,font:{family:MONO,size:9},callback:v=>'$'+v.toFixed(0)},grid:{color:GRID},position:'left'},
+      y:{ticks:{color:TICK,font:{family:MONO,size:9},callback:v=>'$'+v.toFixed(0)},grid:{color:GRID},position:'left'},
       y2:{ticks:{color:TICK,font:{family:MONO,size:9}},grid:{display:false},position:'right'},
-      x: {ticks:{color:TICK,font:{family:MONO,size:9},maxTicksLimit:9,maxRotation:0},grid:{color:GRID}}
+      x:{ticks:{color:TICK,font:{family:MONO,size:9},maxTicksLimit:9,maxRotation:0},grid:{color:GRID}}
     } : sc(v=>'$'+v.toFixed(0));
 
-    sigChart=new Chart(document.getElementById('sigCanvas'),{
+    sigChart = new Chart(document.getElementById('sigCanvas'), {
       type:'line',
       data:{labels:data.map(d=>d.date),datasets},
       options:{
@@ -1311,22 +1816,37 @@ document.getElementById('runBtn').addEventListener('click', async () => {
 
   drawSig(results[0]);
   document.getElementById('sigTabs').addEventListener('click', e => {
-    const btn=e.target.closest('.ttab'); if(!btn) return;
+    const btn = e.target.closest('.ttab'); if(!btn) return;
     document.querySelectorAll('.ttab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     drawSig(results[+btn.dataset.idx]);
   });
 
+  // ── Stats tab ──
   renderStats(results);
 
+  // ── Optimize tab ──
+  if (results.length >= 2) renderOptimization(results);
+
+  lastResults = results;
+
+  // Switch to Portfolio tab
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab[data-panel="portfolio"]').classList.add('active');
+  document.getElementById('panel-portfolio').classList.add('active');
+
   setSys('ready','COMPLETE');
-  document.getElementById('runBtn').disabled=false;
-});
+  document.getElementById('runBtn').disabled = false;
+  if (btn) btn.disabled = false;
+}
+window.runFinalBacktest = runFinalBacktest;
+
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
-['MSFT','IBM'].forEach(addTicker);
+['MSFT','IBM'].forEach(addTicker);   // default: works with demo key
 </script>
 </body>
 </html>

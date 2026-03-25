@@ -173,4 +173,4 @@ is a **tested one**.
 *Welcome to QuantBT.*  
 *Where hypotheses go to either die… or evolve.*
 
-**Explore the tool here:** [Forecasting Backtester](doctorofdata.github.io/projects/financial-backtester/)
+**Explore the tool here:** [Forecasting Backtester](https://doctorofdata.github.io/projects/financial-backtester/)
