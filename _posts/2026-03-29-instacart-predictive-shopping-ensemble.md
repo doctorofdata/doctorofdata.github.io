@@ -20,7 +20,7 @@ This is a continuation of the market basket analysis conducted in the previous p
 
 In our last post, we examined five different strategies for offering suggestions to users as they make purchases using Instacart. Here, we will assess a combined strategy utilizing the priors under different categories of circumstances to see if, together, they will all work together to yield more accurate suggestions! <a class="anchor" id="top"></a>
 
-<center><img src="marketbasketstudy.png""></center>
+<center><img src="marketbasketstudy.png"></center>
 
 ---
 
