@@ -19,7 +19,7 @@ header:
 excerpt_separator: <!--more-->
 ---
 
-In this post, build a series of recommendation engines for the Microsoft MINDS dataset using popular heuristic strategies and a combination of machine learning algorithms.
+In this post, we build a series of recommendation engines for the Microsoft MINDS dataset using popular heuristic strategies and a combination of machine learning algorithms.
 
 <!--more-->
 
