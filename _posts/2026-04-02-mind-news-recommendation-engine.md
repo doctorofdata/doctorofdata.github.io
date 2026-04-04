@@ -8,6 +8,11 @@ categories:
   - Market-Basket
   - EDA
   - Recommendations
+tags:
+  - Machine Learning
+  - Market-Basket
+  - EDA
+  - Recommendations
 permalink: /posts/2026/4/minds-recommendation-engine/
 header:
   teaser: recommendations-generator.png
@@ -20,7 +25,7 @@ In this post, build a series of recommendation engines for the Microsoft MINDS d
 
 <a class = "anchor" id = "top"></a>
 
-<center><img src = "recommendations-generator.png"></center>
+<center><img src = "/images/recommendations-generator.png"></center>
 
 # 📰 News Data: Microsoft MIND — Two-Stage Generate-&-Rerank News Recommendation Engine
 
