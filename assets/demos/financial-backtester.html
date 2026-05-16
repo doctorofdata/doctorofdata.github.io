@@ -410,7 +410,7 @@ tr.sel-row td:first-child{border-left:2px solid var(--acc)}
 
   <div class="note">
     <strong>Data:</strong> Yahoo Finance (primary) with Stooq fallback. No API key required.<br><br>
-    Optional Alpaca paper credentials are stored in your browser only for connectivity checks.<br><br>
+    Optional Alpaca paper key/base are stored in browser local storage; secret is session-only and never persisted.<br><br>
     Runs all 6 strategies on each ticker. Select one per asset in the ◑ Compare tab, then run the final backtest to generate a paper-trading activity report.
   </div>
 </aside>
@@ -612,14 +612,17 @@ function loadAlpacaConfig() {
     }
     const cfg = JSON.parse(raw);
     if (cfg.key) document.getElementById('alpacaKey').value = cfg.key;
-    if (cfg.secret) document.getElementById('alpacaSecret').value = cfg.secret;
+    const sessionSecret = sessionStorage.getItem(ALPACA_STORAGE_KEY+'.secret');
+    if (sessionSecret) document.getElementById('alpacaSecret').value = sessionSecret;
     document.getElementById('alpacaBase').value = cfg.base || DEFAULT_ALPACA_BASE_URL;
   } catch(_) {}
 }
 
 function saveAlpacaConfig() {
   const cfg = getAlpacaConfig();
-  localStorage.setItem(ALPACA_STORAGE_KEY, JSON.stringify(cfg));
+  localStorage.setItem(ALPACA_STORAGE_KEY, JSON.stringify({ key: cfg.key, base: cfg.base }));
+  if (cfg.secret) sessionStorage.setItem(ALPACA_STORAGE_KEY+'.secret', cfg.secret);
+  else sessionStorage.removeItem(ALPACA_STORAGE_KEY+'.secret');
   return cfg;
 }
 
@@ -1248,6 +1251,7 @@ function renderPaperTradingReport(results) {
     document.body.appendChild(a);
     a.click();
     a.remove();
+    // Allow the browser to begin the download before revoking the object URL.
     setTimeout(() => URL.revokeObjectURL(objUrl), 150);
   };
 }
