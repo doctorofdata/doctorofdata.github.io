@@ -397,7 +397,7 @@ tr.sel-row td:first-child{border-left:2px solid var(--acc)}
         <input type="password" id="alpacaSecret" placeholder="APCA-API-SECRET-KEY">
       </div>
       <div class="f"><label class="fl">Paper Base URL</label>
-        <input type="text" id="alpacaBase" value="https://paper-api.alpaca.markets" spellcheck="false">
+        <input type="text" id="alpacaBase" placeholder="https://paper-api.alpaca.markets" spellcheck="false">
       </div>
       <div class="two">
         <button class="bpre" id="alpacaSaveBtn">SAVE KEYS</button>
@@ -527,6 +527,8 @@ let selectedStrategies = {};  // {ticker: stratId}  — user selection per ticke
 let lastCmpData        = [];  // [{ticker, stratResults}]  — compare tab data
 let lastRunConfig      = {};  // {initCap, sh, sd, ed}  — config from last Analyse run
 const ALPACA_STORAGE_KEY = 'quantbt.alpaca.paper';
+const DEFAULT_ALPACA_BASE_URL = 'https://paper-api.alpaca.markets';
+// Positions are integer deltas in this simulator (e.g., ±shares per signal); 0.5 safely filters out non-trade/noise values.
 const MIN_POSITION_THRESHOLD = 0.5;
 
 // ═══════════════════════════════════════════════════════════════
@@ -597,18 +599,21 @@ function getAlpacaConfig() {
   return {
     key: document.getElementById('alpacaKey').value.trim(),
     secret: document.getElementById('alpacaSecret').value.trim(),
-    base: (document.getElementById('alpacaBase').value.trim() || 'https://paper-api.alpaca.markets').replace(/\/+$/,'')
+    base: (document.getElementById('alpacaBase').value.trim() || DEFAULT_ALPACA_BASE_URL).replace(/\/+$/,'')
   };
 }
 
 function loadAlpacaConfig() {
   try {
     const raw = localStorage.getItem(ALPACA_STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      document.getElementById('alpacaBase').value = DEFAULT_ALPACA_BASE_URL;
+      return;
+    }
     const cfg = JSON.parse(raw);
     if (cfg.key) document.getElementById('alpacaKey').value = cfg.key;
     if (cfg.secret) document.getElementById('alpacaSecret').value = cfg.secret;
-    if (cfg.base) document.getElementById('alpacaBase').value = cfg.base;
+    document.getElementById('alpacaBase').value = cfg.base || DEFAULT_ALPACA_BASE_URL;
   } catch(_) {}
 }
 
@@ -635,7 +640,7 @@ async function testAlpacaConnection() {
     });
     const body = await r.json().catch(()=>null);
     if (!r.ok) {
-      const msg = body?.message || `${r.status} ${r.statusText}`;
+      const msg = body?.message || `HTTP ${r.status} ${r.statusText || '(unparsable response body)'}`;
       throw new Error(msg);
     }
     await tLog('SYS ',`✓ Alpaca paper link OK · status=${body?.status ?? 'unknown'} · buying_power=${body?.buying_power ?? 'n/a'}`);
@@ -1154,12 +1159,12 @@ function buildActivityRows(results) {
 }
 
 function toCSV(rows) {
-  const escapeCSVValue = v => `"${String(v).replace(/"/g,'""')}"`;
+  const formatCSVValue = v => `"${String(v).replace(/"/g,'""')}"`;
   const head = ['date','ticker','strategy','side','qty','price','notional'];
   const body = rows.map(r => [
     r.date, r.ticker, r.strategy, r.side, r.qty,
     r.price.toFixed(4), r.notional.toFixed(2)
-  ].map(escapeCSVValue).join(','));
+  ].map(formatCSVValue).join(','));
   return [head.join(','), ...body].join('\n');
 }
 
@@ -1179,8 +1184,14 @@ function renderPaperTradingReport(results) {
   const buyNotional = buyRows.reduce((s,r)=>s+r.notional,0);
   const sellNotional = sellRows.reduce((s,r)=>s+r.notional,0);
   const netFlow = sellNotional - buyNotional;
-  const pnl = results.reduce((s,r)=>s+(r.data[r.data.length-1].total-r.data[0].total),0);
-  const byTicker = rows.reduce((m,r)=>{m[r.ticker]=(m[r.ticker]||0)+1; return m;},{});
+  const pnl = results.reduce((s,r)=>{
+    if (!r.data?.length) return s;
+    return s + (r.data[r.data.length-1].total - r.data[0].total);
+  },0);
+  const byTicker = rows.reduce((m,r)=>{
+    m[r.ticker] = (m[r.ticker] || 0) + 1;
+    return m;
+  },{});
   const topTicker = Object.entries(byTicker).sort((a,b)=>b[1]-a[1])[0];
   const alpacaCfg = getAlpacaConfig();
   const hasAlpacaCreds = Boolean(alpacaCfg.key && alpacaCfg.secret);
@@ -1227,7 +1238,7 @@ function renderPaperTradingReport(results) {
       </div>
     </div>`;
 
-  document.getElementById('exportPaperCsvBtn').addEventListener('click', () => {
+  document.getElementById('exportPaperCsvBtn').onclick = () => {
     const blob = new Blob([toCSV(rows)], {type:'text/csv;charset=utf-8;'});
     const a = document.createElement('a');
     const stamp = new Date().toISOString().slice(0,10);
@@ -1238,7 +1249,7 @@ function renderPaperTradingReport(results) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(objUrl), 150);
-  });
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
