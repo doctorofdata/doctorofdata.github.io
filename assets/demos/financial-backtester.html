@@ -527,6 +527,7 @@ let selectedStrategies = {};  // {ticker: stratId}  — user selection per ticke
 let lastCmpData        = [];  // [{ticker, stratResults}]  — compare tab data
 let lastRunConfig      = {};  // {initCap, sh, sd, ed}  — config from last Analyse run
 const ALPACA_STORAGE_KEY = 'quantbt.alpaca.paper';
+const MIN_POSITION_THRESHOLD = 0.5;
 
 // ═══════════════════════════════════════════════════════════════
 //  UTILITIES
@@ -1136,7 +1137,7 @@ function renderStats(results) {
 function buildActivityRows(results) {
   return results.flatMap(r =>
     r.data
-      .filter(d => Math.abs(d.position) > 0.5)
+      .filter(d => Math.abs(d.position) > MIN_POSITION_THRESHOLD)
       .map(d => {
         const qty = Math.abs(d.position);
         return {
@@ -1153,12 +1154,12 @@ function buildActivityRows(results) {
 }
 
 function toCSV(rows) {
-  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const escapeCSVValue = v => `"${String(v).replace(/"/g,'""')}"`;
   const head = ['date','ticker','strategy','side','qty','price','notional'];
   const body = rows.map(r => [
     r.date, r.ticker, r.strategy, r.side, r.qty,
     r.price.toFixed(4), r.notional.toFixed(2)
-  ].map(esc).join(','));
+  ].map(escapeCSVValue).join(','));
   return [head.join(','), ...body].join('\n');
 }
 
@@ -1230,12 +1231,13 @@ function renderPaperTradingReport(results) {
     const blob = new Blob([toCSV(rows)], {type:'text/csv;charset=utf-8;'});
     const a = document.createElement('a');
     const stamp = new Date().toISOString().slice(0,10);
-    a.href = URL.createObjectURL(blob);
+    const objUrl = URL.createObjectURL(blob);
+    a.href = objUrl;
     a.download = `quantbt-paper-activity-${stamp}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => URL.revokeObjectURL(objUrl), 150);
   });
 }
 
