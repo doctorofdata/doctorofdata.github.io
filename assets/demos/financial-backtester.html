@@ -391,7 +391,7 @@ tr.sel-row td:first-child{border-left:2px solid var(--acc)}
     <div class="sh">03 · Alpaca Paper API</div>
     <div class="pnl">
       <div class="f"><label class="fl">API Key ID</label>
-        <input type="password" id="alpacaKey" placeholder="APCA-API-KEY-ID">
+        <input type="text" id="alpacaKey" placeholder="APCA-API-KEY-ID">
       </div>
       <div class="f"><label class="fl">API Secret</label>
         <input type="password" id="alpacaSecret" placeholder="APCA-API-SECRET-KEY">
@@ -530,6 +530,7 @@ const ALPACA_STORAGE_KEY = 'quantbt.alpaca.paper';
 const DEFAULT_ALPACA_BASE_URL = 'https://paper-api.alpaca.markets';
 // Positions are integer deltas in this simulator (e.g., ±shares per signal); 0.5 safely filters out non-trade/noise values.
 const MIN_POSITION_THRESHOLD = 0.5;
+const DOWNLOAD_CLEANUP_DELAY_MS = 150;
 
 // ═══════════════════════════════════════════════════════════════
 //  UTILITIES
@@ -643,10 +644,10 @@ async function testAlpacaConnection() {
     });
     const body = await r.json().catch(()=>null);
     if (!r.ok) {
-      const msg = body?.message || `HTTP ${r.status} ${r.statusText || '(unparsable response body)'}`;
+      const msg = body?.message || `HTTP ${r.status} ${r.statusText || '(empty or invalid response)'}`;
       throw new Error(msg);
     }
-    await tLog('SYS ',`✓ Alpaca paper link OK · status=${body?.status ?? 'unknown'} · buying_power=${body?.buying_power ?? 'n/a'}`);
+    await tLog('SYS ',`✓ Alpaca paper link OK · status=${body?.status ?? 'unknown'} · buying power=${body?.buying_power ?? 'n/a'}`);
   } catch(e) {
     await tLog('ERR ',`✗ Alpaca paper link failed: ${e.message}`);
   } finally {
@@ -1162,7 +1163,7 @@ function buildActivityRows(results) {
 }
 
 function toCSV(rows) {
-  const formatCSVValue = v => `"${String(v).replace(/"/g,'""')}"`;
+  const formatCSVValue = value => `"${String(value).replace(/"/g,'""')}"`;
   const head = ['date','ticker','strategy','side','qty','price','notional'];
   const body = rows.map(r => [
     r.date, r.ticker, r.strategy, r.side, r.qty,
@@ -1225,7 +1226,8 @@ function renderPaperTradingReport(results) {
         <div class="rcard"><div class="rlabel">Gross sell notional</div><div class="rval pos">${$m(sellNotional)}</div><div class="rmeta">paper cash inflow</div></div>
         <div class="rcard"><div class="rlabel">Net flow (sell-buy)</div><div class="rval ${netFlow>=0?'pos':'neg'}">${$m(netFlow)}</div><div class="rmeta">activity cash delta</div></div>
         <div class="rcard"><div class="rlabel">Backtest P&L</div><div class="rval ${pnl>=0?'pos':'neg'}">${$m(pnl)}</div><div class="rmeta">aggregate across tickers</div></div>
-        <div class="rcard"><div class="rlabel">Most active ticker</div><div class="rval dim">${topTicker?.[0] ?? '—'}</div><div class="rmeta">${topTicker?.[1] ?? 0} fills · Alpaca keys ${hasAlpacaCreds?'configured':'not configured'}</div></div>
+        <div class="rcard"><div class="rlabel">Most active ticker</div><div class="rval dim">${topTicker?.[0] ?? '—'}</div><div class="rmeta">${topTicker?.[1] ?? 0} fills</div></div>
+        <div class="rcard"><div class="rlabel">Alpaca keys</div><div class="rval dim">${hasAlpacaCreds?'configured':'not configured'}</div><div class="rmeta">paper connection readiness</div></div>
       </div>
     </div>
     <div class="cwrap">
@@ -1252,7 +1254,7 @@ function renderPaperTradingReport(results) {
     a.click();
     a.remove();
     // Allow the browser to begin the download before revoking the object URL.
-    setTimeout(() => URL.revokeObjectURL(objUrl), 150);
+    setTimeout(() => URL.revokeObjectURL(objUrl), DOWNLOAD_CLEANUP_DELAY_MS);
   };
 }
 
