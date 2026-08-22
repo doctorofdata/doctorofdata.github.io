@@ -6,3 +6,5 @@ _site
 _data/envlocal.json
 .env
 /assets/___dummy_content
+*.bak
+scripts/_cache/

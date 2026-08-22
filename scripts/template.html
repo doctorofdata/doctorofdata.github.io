@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Joint Portfolio Platform — 3 Books</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#131722; --panel2:#171c29; --border:#232838;
+    --text:#e6e9f0; --muted:#8b93a7; --accent:#4f8cff; --green:#3ecf8e; --red:#ff5d5d;
+    --amber:#e8b13a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--text);font-size:14px}
+  header{padding:20px 28px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10}
+  header h1{margin:0 0 4px;font-size:19px;font-weight:600}
+  header .sub{color:var(--muted);font-size:12.5px}
+  nav{display:flex;gap:4px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--bg);
+      position:sticky;top:64px;z-index:9;overflow-x:auto}
+  nav button{background:none;border:none;color:var(--muted);padding:12px 16px;cursor:pointer;font-size:13.5px;
+             border-bottom:2px solid transparent;white-space:nowrap}
+  nav button.active{color:var(--text);border-bottom-color:var(--accent)}
+  nav button:hover{color:var(--text)}
+  main{padding:24px 28px 60px;max-width:1400px;margin:0 auto}
+  .tab{display:none}
+  .tab.active{display:block}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px}
+  .kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .kpi .label{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+  .kpi .value{font-size:21px;font-weight:600;font-variant-numeric:tabular-nums}
+  .kpi .value.pos{color:var(--green)} .kpi .value.neg{color:var(--red)}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:20px}
+  .panel h2{margin:0 0 4px;font-size:14.5px}
+  .panel .desc{color:var(--muted);font-size:12px;margin-bottom:14px}
+  .grid2{display:grid;grid-template-columns:2fr 1fr;gap:20px}
+  .grid2 .panel{margin-bottom:0}
+  @media (max-width:900px){.grid2{grid-template-columns:1fr}}
+  .note{background:#1a1f2e;border:1px solid var(--border);border-left:3px solid var(--amber);
+        border-radius:6px;padding:10px 14px;font-size:12.5px;color:var(--muted);margin-bottom:16px}
+  .note b{color:var(--text)}
+  table{width:100%;border-collapse:collapse;font-size:12.8px}
+  th{text-align:left;color:var(--muted);font-weight:500;padding:7px 8px;border-bottom:1px solid var(--border);
+     cursor:pointer;user-select:none;white-space:nowrap;position:sticky;top:0;background:var(--panel)}
+  th:hover{color:var(--text)}
+  th.sorted::after{content:" \25BE";color:var(--accent)}
+  td{padding:6px 8px;border-bottom:1px solid #1b202d;white-space:nowrap}
+  tr:hover td{background:#171c29}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .pill.buy{background:rgba(62,207,142,.15);color:var(--green)}
+  .pill.sell{background:rgba(255,93,93,.15);color:var(--red)}
+  .book-tag{display:inline-block;padding:1px 7px;border-radius:5px;font-size:10.8px;background:#1e2536;color:var(--muted)}
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .filters input[type=text]{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+                             padding:7px 10px;border-radius:6px;font-size:13px;min-width:180px}
+  .filters label{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12.5px;cursor:pointer}
+  .book-selector{display:flex;gap:6px;margin-bottom:16px}
+  .book-selector button{background:var(--panel2);border:1px solid var(--border);color:var(--muted);
+                         padding:7px 14px;border-radius:7px;cursor:pointer;font-size:13px}
+  .book-selector button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  svg text{fill:var(--muted);font-size:10.5px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .scroll{max-height:560px;overflow:auto;border:1px solid var(--border);border-radius:8px}
+  .muted{color:var(--muted)}
+  .pager{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12.5px;color:var(--muted)}
+  .pager button{background:var(--panel2);border:1px solid var(--border);color:var(--text);
+                 padding:5px 10px;border-radius:6px;cursor:pointer}
+  .pager button:disabled{opacity:.4;cursor:default}
+  footer{padding:20px 28px;color:var(--muted);font-size:11.5px;border-top:1px solid var(--border);text-align:center}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Joint Portfolio Platform</h1>
+  <div class="sub" id="hdrSub">loading…</div>
+</header>
+<nav id="tabNav"></nav>
+<main id="main"></main>
+<footer>Read-only. Every figure comes from a live GET against each book's own Alpaca paper account at build time. No orders placed, amended, or cancelled by this page.</footer>
+
+<script id="joint-data" type="application/json">__DATA__</script>
+<script>
+const DATA = JSON.parse(document.getElementById('joint-data').textContent);
+const BOOKS = DATA.book_order;
+const COLORS = {alpaca_trader:'#4f8cff', fintech_trader:'#3ecf8e', aggressive_challenger_trader:'#e8b13a', combined:'#c46bff'};
+const fmt$ = n => n===null||n===undefined ? '—' : (n<0?'-$':'$') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt$0 = n => n===null||n===undefined ? '—' : (n<0?'-$':'$') + Math.abs(Math.round(n)).toLocaleString('en-US');
+const fmtPct = n => n===null||n===undefined ? '—' : (n*100).toFixed(2)+'%';
+const fmtDate = iso => new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+const cls = n => n>0?'pos':(n<0?'neg':'');
+
+// ---------------------------------------------------------------- SVG line chart
+function lineChart(series, opts={}){
+  const w = opts.w||900, h = opts.h||260, pad = {l:60,r:16,t:14,b:26};
+  const allPts = series.flatMap(s=>s.points);
+  const dates = [...new Set(allPts.map(p=>p.date))].sort();
+  const xIdx = Object.fromEntries(dates.map((d,i)=>[d,i]));
+  const ys = allPts.map(p=>p.equity);
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const yPad = (yMax-yMin)*0.08 || yMax*0.02 || 1;
+  yMin -= yPad; yMax += yPad;
+  const x = i => pad.l + (dates.length<=1?0:(i/(dates.length-1))*(w-pad.l-pad.r));
+  const y = v => pad.t + (1-(v-yMin)/(yMax-yMin))*(h-pad.t-pad.b);
+  let svg = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">`;
+  // gridlines
+  const gridN = 4;
+  for(let i=0;i<=gridN;i++){
+    const v = yMin + (yMax-yMin)*i/gridN;
+    svg += `<line x1="${pad.l}" x2="${w-pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="#1b202d"/>`;
+    svg += `<text x="${pad.l-8}" y="${y(v)+3}" text-anchor="end">${fmt$0(v)}</text>`;
+  }
+  // x labels: first, mid, last
+  [0, Math.floor((dates.length-1)/2), dates.length-1].forEach(i=>{
+    if(dates[i]===undefined) return;
+    svg += `<text x="${x(i)}" y="${h-6}" text-anchor="middle">${dates[i]}</text>`;
+  });
+  series.forEach(s=>{
+    const pts = s.points.filter(p=>xIdx[p.date]!==undefined).sort((a,b)=>xIdx[a.date]-xIdx[b.date]);
+    if(!pts.length) return;
+    const d = pts.map((p,i)=> (i===0?'M':'L') + x(xIdx[p.date]).toFixed(1) + ' ' + y(p.equity).toFixed(1)).join(' ');
+    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width||2}" opacity="${s.opacity||1}"/>`;
+  });
+  svg += '</svg>';
+  return svg;
+}
+
+// ---------------------------------------------------------------- horizontal bar (sector)
+function barChart(rows, opts={}){
+  const w = opts.w||900, rowH = 22, pad={l:200,r:70,t:6,b:6};
+  const h = rows.length*rowH + pad.t + pad.b;
+  const maxV = Math.max(...rows.map(r=>r.value), 1);
+  let svg = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">`;
+  rows.forEach((r,i)=>{
+    const y = pad.t + i*rowH;
+    const bw = (r.value/maxV)*(w-pad.l-pad.r);
+    svg += `<text x="${pad.l-8}" y="${y+rowH/2+4}" text-anchor="end">${r.sector}</text>`;
+    svg += `<rect x="${pad.l}" y="${y+3}" width="${Math.max(bw,1)}" height="${rowH-8}" fill="${opts.color||'#4f8cff'}" rx="3"/>`;
+    svg += `<text x="${pad.l+bw+8}" y="${y+rowH/2+4}">${fmt$0(r.value)} (${(r.pct*100).toFixed(1)}%)</text>`;
+  });
+  svg += '</svg>';
+  return svg;
+}
+
+// ---------------------------------------------------------------- tabs
+const TABS = [
+  {id:'overview', label:'Aggregate Overview'},
+  {id:'books', label:'Individual Books'},
+  {id:'sectors', label:'Sector Breakdown'},
+  {id:'trades', label:'Trade Drill-Down'},
+  {id:'perf', label:'Performance Analysis'},
+];
+const nav = document.getElementById('tabNav');
+TABS.forEach((t,i)=>{
+  const b = document.createElement('button');
+  b.textContent = t.label; b.dataset.tab = t.id;
+  if(i===0) b.classList.add('active');
+  b.onclick = ()=>showTab(t.id);
+  nav.appendChild(b);
+});
+function showTab(id){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===id));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.id==='tab-'+id));
+}
+
+document.getElementById('hdrSub').textContent =
+  `Live pull from Alpaca /v2/account, /v2/positions, /v2/orders, /v2/account/portfolio/history — generated ${new Date(DATA.generated_at).toLocaleString()}`;
+
+const mainEl = document.getElementById('main');
+TABS.forEach(t=>{
+  const d = document.createElement('div');
+  d.className = 'tab' + (t.id==='overview'?' active':'');
+  d.id = 'tab-'+t.id;
+  mainEl.appendChild(d);
+});
+
+// ================================================================== OVERVIEW
+(function(){
+  const el = document.getElementById('tab-overview');
+  const c = DATA.combined;
+  el.innerHTML = `
+    <div class="note"><b>Scope:</b> ${DATA.excluded_book_note}</div>
+    <div class="note"><b>Funding timeline:</b> ${DATA.inception_note}</div>
+    <div class="note"><b>Today's number:</b> ${DATA.live_vs_history_note}</div>
+    ${DATA.publish_note ? `<div class="note"><b>Publishing:</b> ${DATA.publish_note}</div>` : ''}
+    <div class="kpis">
+      <div class="kpi"><div class="label">Combined equity</div><div class="value">${fmt$(c.current_equity)}</div></div>
+      <div class="kpi"><div class="label">Combined funded capital</div><div class="value">${fmt$(c.base_value)}</div></div>
+      <div class="kpi"><div class="label">Combined P&amp;L ($)</div><div class="value ${cls(c.total_pl)}">${fmt$(c.total_pl)}</div></div>
+      <div class="kpi"><div class="label">Combined P&amp;L (%)</div><div class="value ${cls(c.total_pl)}">${fmtPct(c.total_pl_pct)}</div></div>
+      <div class="kpi"><div class="label">Books included</div><div class="value">3</div></div>
+      <div class="kpi"><div class="label">Total filled trades</div><div class="value">${c.n_filled_orders.toLocaleString()}</div></div>
+    </div>
+    <div class="panel">
+      <h2>Equity over time — combined vs. each book</h2>
+      <div class="desc">Each book's own daily equity curve from Alpaca's portfolio history, summed for the combined line. The combined line step-changes upward on 2026-08-07 and 2026-08-14 as fintech_trader and aggressive_challenger_trader come online — see funding-timeline note above.</div>
+      ${lineChart([
+        {points: c.equity_curve, color: COLORS.combined, width: 3},
+        ...BOOKS.map(b=>({points: DATA.books[b].equity_curve, color: COLORS[b], width: 1.5, opacity: 0.85})),
+      ])}
+      <div class="legend">
+        <span><i style="background:${COLORS.combined}"></i>Combined (3 books)</span>
+        ${BOOKS.map(b=>`<span><i style="background:${COLORS[b]}"></i>${DATA.books[b].label}</span>`).join('')}
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h2>Per-book snapshot</h2>
+        <table>
+          <tr><th>Book</th><th class="num">Equity</th><th class="num">P&amp;L $</th><th class="num">P&amp;L %</th><th class="num">Positions</th><th class="num">Filled orders</th></tr>
+          ${BOOKS.map(b=>{const v=DATA.books[b]; return `<tr>
+            <td>${v.label}</td>
+            <td class="num">${fmt$(v.current_equity)}</td>
+            <td class="num ${cls(v.total_pl)}">${fmt$(v.total_pl)}</td>
+            <td class="num ${cls(v.total_pl)}">${fmtPct(v.total_pl_pct)}</td>
+            <td class="num">${v.n_positions}</td>
+            <td class="num">${v.n_filled_orders}</td>
+          </tr>`;}).join('')}
+        </table>
+      </div>
+      <div class="panel">
+        <h2>Combined sector exposure</h2>
+        <div class="desc">Top 8 categories across all 3 books, by market value.</div>
+        ${barChart(c.sector_breakdown.slice(0,8), {color:COLORS.combined})}
+      </div>
+    </div>
+  `;
+})();
+
+// ================================================================== INDIVIDUAL BOOKS
+(function(){
+  const el = document.getElementById('tab-books');
+  let active = BOOKS[0];
+  function render(){
+    const v = DATA.books[active];
+    el.innerHTML = `
+      <div class="book-selector">${BOOKS.map(b=>`<button data-b="${b}" class="${b===active?'active':''}">${DATA.books[b].label}</button>`).join('')}</div>
+      <div class="kpis">
+        <div class="kpi"><div class="label">Equity</div><div class="value">${fmt$(v.current_equity)}</div></div>
+        <div class="kpi"><div class="label">Funded capital</div><div class="value">${fmt$(v.base_value)}</div></div>
+        <div class="kpi"><div class="label">P&amp;L ($ / %)</div><div class="value ${cls(v.total_pl)}">${fmt$(v.total_pl)} <span style="font-size:13px">(${fmtPct(v.total_pl_pct)})</span></div></div>
+        <div class="kpi"><div class="label">Max drawdown</div><div class="value neg">${fmtPct(v.max_drawdown_pct)}</div><div class="desc" style="margin:4px 0 0">on ${v.max_drawdown_date||'—'}</div></div>
+        <div class="kpi"><div class="label">Invested / Positions</div><div class="value">${fmt$0(v.invested_market_value)}</div><div class="desc" style="margin:4px 0 0">${v.n_positions} names</div></div>
+        <div class="kpi"><div class="label">Unrealized P&amp;L (open book)</div><div class="value ${cls(v.unrealized_pl_total)}">${fmt$(v.unrealized_pl_total)}</div></div>
+      </div>
+      <div class="panel">
+        <h2>${v.label} — equity over time</h2>
+        ${lineChart([{points: v.equity_curve, color: COLORS[active], width: 2.5}])}
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <h2>Sector / category breakdown</h2>
+          ${barChart(v.sector_breakdown.slice(0,10), {color:COLORS[active]})}
+        </div>
+        <div class="panel">
+          <h2>Top positions by unrealized P&amp;L</h2>
+          <div class="scroll" style="max-height:340px">
+            <table>
+              <tr><th>Symbol</th><th class="num">Mkt Value</th><th class="num">Unreal. P&amp;L</th><th class="num">%</th></tr>
+              ${[...v.positions].sort((a,b)=>b.unrealized_pl-a.unrealized_pl).map(p=>`
+                <tr><td>${p.symbol}</td><td class="num">${fmt$0(p.market_value)}</td>
+                <td class="num ${cls(p.unrealized_pl)}">${fmt$(p.unrealized_pl)}</td>
+                <td class="num ${cls(p.unrealized_pl)}">${fmtPct(p.unrealized_plpc)}</td></tr>`).join('')}
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    el.querySelectorAll('.book-selector button').forEach(b=>b.onclick=()=>{active=b.dataset.b; render();});
+  }
+  render();
+})();
+
+// ================================================================== SECTORS
+(function(){
+  const el = document.getElementById('tab-sectors');
+  const unclassified = DATA.unclassified_symbols;
+  el.innerHTML = `
+    ${unclassified.length ? `<div class="note"><b>${unclassified.length} symbols left "Unclassified"</b> rather than guessed: ${unclassified.join(', ')}. These are real holdings; their category just isn't confidently known. They are still counted under "Unclassified" below, so every book's weights sum to 100% — nothing is silently dropped.</div>`:''}
+    <div class="panel">
+      <h2>Combined — all 3 books</h2>
+      ${barChart(DATA.combined.sector_breakdown, {color:COLORS.combined})}
+    </div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr 1fr">
+      ${BOOKS.map(b=>{const v=DATA.books[b]; return `
+      <div class="panel">
+        <h2>${v.label}</h2>
+        ${barChart(v.sector_breakdown, {color:COLORS[b], w:400})}
+      </div>`;}).join('')}
+    </div>
+  `;
+})();
+
+// ================================================================== TRADES
+(function(){
+  const el = document.getElementById('tab-trades');
+  const PAGE = 60;
+  let page = 0, sortKey = 'filled_at', sortDir = -1;
+  let bookFilter = new Set(BOOKS);
+  let q = '';
+
+  el.innerHTML = `
+    <div class="panel">
+      <h2>Trade drill-down</h2>
+      <div class="desc">Every filled order across the 3 books — symbol, side, quantity, fill price, notional, and timestamp. This is the live execution record from /v2/orders, not a model.</div>
+      <div class="filters">
+        <input type="text" id="tSearch" placeholder="Search symbol…">
+        ${BOOKS.map(b=>`<label><input type="checkbox" class="bf" data-b="${b}" checked> ${DATA.books[b].label}</label>`).join('')}
+      </div>
+      <div class="scroll">
+        <table id="tTable">
+          <thead><tr>
+            <th data-k="filled_at">Filled</th>
+            <th data-k="book_label">Book</th>
+            <th data-k="symbol">Symbol</th>
+            <th data-k="side">Side</th>
+            <th data-k="qty" class="num">Qty</th>
+            <th data-k="price" class="num">Price</th>
+            <th data-k="notional" class="num">Notional</th>
+          </tr></thead>
+          <tbody id="tBody"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button id="pPrev">← Prev</button>
+        <span id="pInfo"></span>
+        <button id="pNext">Next →</button>
+      </div>
+    </div>
+  `;
+
+  function filtered(){
+    let rows = DATA.trades_all.filter(t=>bookFilter.has(t.book));
+    if(q) rows = rows.filter(t=>t.symbol.toLowerCase().includes(q));
+    rows = [...rows].sort((a,b)=>{
+      const av=a[sortKey], bv=b[sortKey];
+      if(av<bv) return -1*sortDir; if(av>bv) return 1*sortDir; return 0;
+    });
+    return rows;
+  }
+  function renderTable(){
+    const rows = filtered();
+    const totalPages = Math.max(1, Math.ceil(rows.length/PAGE));
+    page = Math.min(page, totalPages-1);
+    const slice = rows.slice(page*PAGE, page*PAGE+PAGE);
+    document.getElementById('tBody').innerHTML = slice.map(t=>`
+      <tr>
+        <td>${fmtDate(t.filled_at)}</td>
+        <td><span class="book-tag">${t.book_label}</span></td>
+        <td>${t.symbol}</td>
+        <td><span class="pill ${t.side}">${t.side}</span></td>
+        <td class="num">${t.qty.toLocaleString()}</td>
+        <td class="num">${fmt$(t.price)}</td>
+        <td class="num">${fmt$0(t.notional)}</td>
+      </tr>`).join('');
+    document.getElementById('pInfo').textContent = `${rows.length.toLocaleString()} trades — page ${page+1} of ${totalPages}`;
+    document.getElementById('pPrev').disabled = page===0;
+    document.getElementById('pNext').disabled = page>=totalPages-1;
+    document.querySelectorAll('#tTable th').forEach(th=>th.classList.toggle('sorted', th.dataset.k===sortKey));
+  }
+  el.querySelector('#tSearch').oninput = e=>{q=e.target.value.trim().toLowerCase(); page=0; renderTable();};
+  el.querySelectorAll('.bf').forEach(cb=>cb.onchange=()=>{
+    bookFilter = new Set([...el.querySelectorAll('.bf:checked')].map(c=>c.dataset.b));
+    page=0; renderTable();
+  });
+  el.querySelectorAll('#tTable th').forEach(th=>th.onclick=()=>{
+    const k = th.dataset.k;
+    if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir = k==='filled_at'?-1:1;}
+    renderTable();
+  });
+  document.getElementById('pPrev').onclick=()=>{page--; renderTable();};
+  document.getElementById('pNext').onclick=()=>{page++; renderTable();};
+  renderTable();
+})();
+
+// ================================================================== PERFORMANCE
+(function(){
+  const el = document.getElementById('tab-perf');
+  function dailyRets(curve){
+    const r=[];
+    for(let i=1;i<curve.length;i++){
+      const p=curve[i-1].equity, c=curve[i].equity;
+      if(p) r.push((c-p)/p);
+    }
+    return r;
+  }
+  function stdev(a){
+    if(a.length<2) return null;
+    const m = a.reduce((x,y)=>x+y,0)/a.length;
+    const v = a.reduce((x,y)=>x+(y-m)**2,0)/(a.length-1);
+    return Math.sqrt(v);
+  }
+  const rows = BOOKS.map(b=>{
+    const v = DATA.books[b];
+    const rets = dailyRets(v.equity_curve);
+    const sd = stdev(rets);
+    const winners = v.positions.filter(p=>p.unrealized_pl>0).length;
+    const losers = v.positions.filter(p=>p.unrealized_pl<0).length;
+    const best = [...v.positions].sort((a,b)=>b.unrealized_pl-a.unrealized_pl)[0];
+    const worst = [...v.positions].sort((a,b)=>a.unrealized_pl-b.unrealized_pl)[0];
+    const top5 = [...v.positions].sort((a,b)=>b.market_value-a.market_value).slice(0,5)
+                  .reduce((s,p)=>s+p.market_value,0);
+    return {b, v, sd, winners, losers, best, worst, top5pct: v.invested_market_value? top5/v.invested_market_value : 0,
+             n: v.equity_curve.length};
+  });
+  el.innerHTML = `
+    <div class="note"><b>Read with the sample size in mind:</b> these accounts have ${Math.min(...rows.map(r=>r.n))}–${Math.max(...rows.map(r=>r.n))} trading days of history (oldest book funded 2026-07-31). Daily-volatility and drawdown figures below are computed directly from that short live record — they are not projected or annualized.</div>
+    <div class="panel">
+      <h2>Risk &amp; return, per book</h2>
+      <table>
+        <tr><th>Book</th><th class="num">Days live</th><th class="num">Total return</th><th class="num">Max drawdown</th>
+            <th class="num">Daily σ (return)</th><th class="num">Winning positions</th><th class="num">Losing positions</th>
+            <th class="num">Top-5 concentration</th></tr>
+        ${rows.map(r=>`<tr>
+          <td>${r.v.label}</td>
+          <td class="num">${r.n}</td>
+          <td class="num ${cls(r.v.total_pl)}">${fmt$(r.v.total_pl)} (${fmtPct(r.v.total_pl_pct)})</td>
+          <td class="num neg">${fmtPct(r.v.max_drawdown_pct)}</td>
+          <td class="num">${r.sd!==null?fmtPct(r.sd):'—'}</td>
+          <td class="num pos">${r.winners}</td>
+          <td class="num neg">${r.losers}</td>
+          <td class="num">${fmtPct(r.top5pct)}</td>
+        </tr>`).join('')}
+      </table>
+    </div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr 1fr">
+      ${rows.map(r=>`
+      <div class="panel">
+        <h2>${r.v.label}</h2>
+        <table>
+          <tr><td class="muted">Best position</td><td class="num pos">${r.best?r.best.symbol+' '+fmt$(r.best.unrealized_pl):'—'}</td></tr>
+          <tr><td class="muted">Worst position</td><td class="num neg">${r.worst?r.worst.symbol+' '+fmt$(r.worst.unrealized_pl):'—'}</td></tr>
+          <tr><td class="muted">Filled orders</td><td class="num">${r.v.n_filled_orders}</td></tr>
+          <tr><td class="muted">First trade</td><td class="num">${r.v.first_trade_at?fmtDate(r.v.first_trade_at):'—'}</td></tr>
+          <tr><td class="muted">Last trade</td><td class="num">${r.v.last_trade_at?fmtDate(r.v.last_trade_at):'—'}</td></tr>
+        </table>
+      </div>`).join('')}
+    </div>
+  `;
+})();
+</script>
+</body>
+</html>

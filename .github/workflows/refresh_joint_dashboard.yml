@@ -1,0 +1,44 @@
+name: Refresh joint portfolio dashboard
+
+on:
+  schedule:
+    # Every 30 min, 13:30-20:30 UTC = 9:30am-4:30pm ET, Mon-Fri (US market hours + margin).
+    # GitHub's cron scheduler is best-effort and can slip several minutes under load —
+    # that is a GitHub platform limit, not something this workflow controls.
+    - cron: "*/30 13-20 * * 1-5"
+  workflow_dispatch: {}   # lets you trigger a manual run from the Actions tab to test
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build dashboard from live Alpaca data
+        env:
+          ALPACA_TRADER_KEY_ID: ${{ secrets.ALPACA_TRADER_KEY_ID }}
+          ALPACA_TRADER_SECRET: ${{ secrets.ALPACA_TRADER_SECRET }}
+          FINTECH_TRADER_KEY_ID: ${{ secrets.FINTECH_TRADER_KEY_ID }}
+          FINTECH_TRADER_SECRET: ${{ secrets.FINTECH_TRADER_SECRET }}
+          AGGRESSIVE_CHALLENGER_TRADER_KEY_ID: ${{ secrets.AGGRESSIVE_CHALLENGER_TRADER_KEY_ID }}
+          AGGRESSIVE_CHALLENGER_TRADER_SECRET: ${{ secrets.AGGRESSIVE_CHALLENGER_TRADER_SECRET }}
+        run: python3 scripts/build_joint_platform.py
+
+      - name: Commit and push if the dashboard changed
+        run: |
+          git config user.name "joint-dashboard-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add trading/joint_portfolio_platform.html
+          if git diff --cached --quiet; then
+            echo "No change in dashboard output — nothing to commit."
+          else
+            git commit -m "Refresh joint portfolio dashboard [skip ci]"
+            git push
+          fi
